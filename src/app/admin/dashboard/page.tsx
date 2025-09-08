@@ -8,37 +8,32 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { 
   Users, 
-  Building, 
-  MessageSquare, 
-  Settings, 
-  TrendingUp, 
-  Plus, 
-  Shield, 
-  LogOut, 
-  BarChart, 
   Calendar, 
-  Bell,
-  Brain,
+  Bell, 
+  Server, 
+  Settings, 
+  Database, 
+  Shield, 
+  TrendingUp, 
+  AlertTriangle,
   CheckCircle2,
-  AlertCircle,
-  Mic,
-  Image,
-  Send,
+  LogOut, 
+  BarChart,
+  Brain,
   School,
-  UserCheck,
   Megaphone,
   Sun,
   Moon,
   Menu,
   X,
-  ChevronDown,
   Home,
   User,
-  Clock,
   ChevronLeft,
   ChevronRight,
-  Database,
-  Server,
+  Send,
+  Mic,
+  Image,
+  Building,
   Activity
 } from 'lucide-react'
 
@@ -76,6 +71,8 @@ interface Announcement {
 export default function AdminDashboard() {
   const { data: session } = useSession()
   const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [selectedAssistant, setSelectedAssistant] = useState('general')
   const [chatMessages, setChatMessages] = useState<any[]>([])
@@ -96,6 +93,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    setMounted(true)
     fetchDashboardData()
   }, [])
 
@@ -126,9 +124,9 @@ export default function AdminDashboard() {
   }
 
   const assistants = [
-    { id: 'general', name: 'General Assistant', icon: Brain, color: 'from-blue-500 to-purple-600' },
-    { id: 'academic', name: 'Academic Advisor', icon: School, color: 'from-green-500 to-blue-600' },
-    { id: 'system', name: 'System Admin', icon: Server, color: 'from-purple-500 to-pink-600' },
+    { id: 'general', name: 'General Assistant', icon: Brain, color: 'from-purple-500 to-pink-600' },
+    { id: 'academic', name: 'Academic Advisor', icon: School, color: 'from-blue-500 to-indigo-600' },
+    { id: 'system', name: 'System Admin', icon: Server, color: 'from-green-500 to-teal-600' },
     { id: 'analytics', name: 'Analytics Expert', icon: BarChart, color: 'from-orange-500 to-red-600' }
   ]
 
@@ -185,301 +183,444 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="text-white text-xl">Loading admin dashboard...</div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-50 dark:from-slate-950 dark:via-purple-950 dark:to-indigo-950 flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading admin dashboard...</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500/30 rounded-full blur-xl animate-pulse"></div>
-        <div className="absolute top-40 -left-40 w-80 h-80 bg-blue-500/20 rounded-full blur-xl animate-pulse delay-1000"></div>
-        <div className="absolute bottom-40 right-1/3 w-60 h-60 bg-pink-500/20 rounded-full blur-xl animate-pulse delay-2000"></div>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-50 dark:from-slate-950 dark:via-purple-950 dark:to-indigo-950" suppressHydrationWarning>
+      {/* Mobile Menu Button */}
+      <Button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        variant="outline"
+        size="sm"
+        className="fixed top-4 left-4 z-40 lg:hidden bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border-white/20 shadow-lg"
+      >
+        <Menu className="h-4 w-4" />
+      </Button>
+
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
 
       {/* Floating Sidebar */}
-      <div className={`fixed left-4 top-4 bottom-4 z-50 transition-all duration-300 ${
-        sidebarCollapsed ? 'w-16' : 'w-20'
-      }`}>
-        <Card className="h-full bg-black/40 backdrop-blur-xl border-white/20 shadow-2xl">
-          <CardContent className="p-4 h-full flex flex-col">
-            {/* Toggle Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="mb-4 p-2 h-12 w-12 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200"
+      <div className={`fixed left-4 top-4 bottom-4 ${sidebarCollapsed ? 'w-20' : 'w-80'} bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl shadow-2xl rounded-2xl border border-white/20 dark:border-slate-700/50 z-50 transition-all duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} overflow-hidden`}>
+        <div className={`h-full flex flex-col ${sidebarCollapsed ? 'p-4' : 'p-6'}`}>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            {!sidebarCollapsed && (
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <Shield className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-gray-900 dark:text-white">Admin Portal</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{session?.user?.name}</p>
+                </div>
+              </div>
+            )}
+            {sidebarCollapsed && (
+              <div className="w-full flex flex-col items-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-lg mb-2">
+                  <Shield className="w-6 h-6 text-white" />
+                </div>
+                <Button
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  variant="ghost"
+                  size="sm"
+                  className="w-8 h-8 p-0"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            {!sidebarCollapsed && (
+              <div className="flex items-center space-x-2">
+                <Button
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  variant="ghost"
+                  size="sm"
+                  className="w-8 h-8 p-0 hidden lg:flex"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                  variant="ghost"
+                  size="sm"
+                  className="w-8 h-8 p-0"
+                >
+                  {mounted && theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </Button>
+                <Button
+                  onClick={() => setSidebarOpen(false)}
+                  variant="ghost"
+                  size="sm"
+                  className="w-8 h-8 p-0 lg:hidden"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Navigation */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none">
+            <nav className="space-y-2 mb-6">
+            <Button 
+              variant="default" 
+              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700`}
+              title={sidebarCollapsed ? "Dashboard" : ""}
             >
-              {sidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+              <Home className="w-5 h-5" />
+              {!sidebarCollapsed && <span className="ml-3">Dashboard</span>}
             </Button>
-
-            {/* Navigation Icons */}
-            <div className="flex-1 space-y-3">
-              <Button variant="ghost" size="sm" className="w-12 h-12 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200">
-                <Home className="h-5 w-5" />
-              </Button>
-              <Button variant="ghost" size="sm" className="w-12 h-12 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200">
-                <Users className="h-5 w-5" />
-              </Button>
-              <Button variant="ghost" size="sm" className="w-12 h-12 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200">
-                <Building className="h-5 w-5" />
-              </Button>
-              <Button variant="ghost" size="sm" className="w-12 h-12 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200">
-                <BarChart className="h-5 w-5" />
-              </Button>
-              <Button variant="ghost" size="sm" className="w-12 h-12 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200">
-                <Settings className="h-5 w-5" />
-              </Button>
-            </div>
-
-            {/* Theme Toggle */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="mb-3 w-12 h-12 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200"
+            <Button 
+              variant="ghost" 
+              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-purple-50 dark:hover:bg-purple-900/20`}
+              title={sidebarCollapsed ? "Users" : ""}
             >
-              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              <Users className="w-5 h-5" />
+              {!sidebarCollapsed && (
+                <>
+                  <span className="ml-3">User Management</span>
+                  <Badge variant="secondary" className="ml-auto bg-purple-100 text-purple-600">{adminStats.totalStudents + adminStats.totalTeachers}</Badge>
+                </>
+              )}
             </Button>
+            <Button 
+              variant="ghost" 
+              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-purple-50 dark:hover:bg-purple-900/20`}
+              title={sidebarCollapsed ? "Announcements" : ""}
+            >
+              <Megaphone className="w-5 h-5" />
+              {!sidebarCollapsed && (
+                <>
+                  <span className="ml-3">Announcements</span>
+                  <Badge variant="secondary" className="ml-auto bg-blue-100 text-blue-600">{adminStats.activeAnnouncements}</Badge>
+                </>
+              )}
+            </Button>
+            <Button 
+              variant="ghost" 
+              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-purple-50 dark:hover:bg-purple-900/20`}
+              title={sidebarCollapsed ? "System Monitor" : ""}
+            >
+              <Activity className="w-5 h-5" />
+              {!sidebarCollapsed && (
+                <>
+                  <span className="ml-3">System Monitor</span>
+                  <Badge variant="secondary" className="ml-auto bg-green-100 text-green-600">{adminStats.systemHealth}</Badge>
+                </>
+              )}
+            </Button>
+            <Button 
+              variant="ghost" 
+              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-purple-50 dark:hover:bg-purple-900/20`}
+              title={sidebarCollapsed ? "AI Assistant" : ""}
+            >
+              <Brain className="w-5 h-5" />
+              {!sidebarCollapsed && <span className="ml-3">AI Assistant</span>}
+            </Button>
+            <Button 
+              variant="ghost" 
+              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-purple-50 dark:hover:bg-purple-900/20`}
+              title={sidebarCollapsed ? "Settings" : ""}
+            >
+              <Settings className="w-5 h-5" />
+              {!sidebarCollapsed && <span className="ml-3">Settings</span>}
+            </Button>
+            </nav>
 
-            {/* Sign Out */}
-            <Button
-              variant="ghost"
-              size="sm"
+            {!sidebarCollapsed && (
+              <>
+                {/* Quick Stats */}
+                <div className="mb-6">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                    <BarChart className="w-4 h-4 mr-2" />
+                    System Overview
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Card className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800">
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{adminStats.totalStudents}</div>
+                        <div className="text-xs text-blue-500 dark:text-blue-400">Students</div>
+                      </div>
+                    </Card>
+                    <Card className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-green-600 dark:text-green-400">{adminStats.totalTeachers}</div>
+                        <div className="text-xs text-green-500 dark:text-green-400">Teachers</div>
+                      </div>
+                    </Card>
+                    <Card className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800">
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-purple-600 dark:text-purple-400">{adminStats.totalDepartments}</div>
+                        <div className="text-xs text-purple-500 dark:text-purple-400">Departments</div>
+                      </div>
+                    </Card>
+                    <Card className="p-3 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-orange-200 dark:border-orange-800">
+                      <div className="text-center">
+                        <div className="text-lg font-bold text-orange-600 dark:text-orange-400">{adminStats.pendingApprovals}</div>
+                        <div className="text-xs text-orange-500 dark:text-orange-400">Pending</div>
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+
+                {/* AI Assistants */}
+                <div className="mb-6">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                    <Brain className="w-4 h-4 mr-2" />
+                    AI Assistants
+                  </h3>
+                  <div className="space-y-2">
+                    {assistants.map((assistant) => (
+                      <Button
+                        key={assistant.id}
+                        variant={selectedAssistant === assistant.id ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => setSelectedAssistant(assistant.id)}
+                        className={`w-full justify-start text-xs ${
+                          selectedAssistant === assistant.id 
+                            ? `bg-gradient-to-r ${assistant.color} text-white` 
+                            : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                        }`}
+                      >
+                        <assistant.icon className="w-4 h-4 mr-2" />
+                        {assistant.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>          {/* Sign Out */}
+          <div className="mt-auto">
+            <Button 
+              variant="ghost" 
+              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20`}
               onClick={() => signOut({ callbackUrl: '/auth/signin' })}
-              className="w-12 h-12 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 transition-all duration-200"
+              title={sidebarCollapsed ? "Sign Out" : ""}
             >
-              <LogOut className="h-5 w-5" />
+              <LogOut className="w-5 h-5" />
+              {!sidebarCollapsed && <span className="ml-3">Sign Out</span>}
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Main Content */}
-      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'ml-24' : 'ml-28'} mr-4 py-4`}>
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Left Column - Stats and Alerts */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Header */}
-            <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-purple-200 to-pink-200 bg-clip-text text-transparent mb-2">
-                Admin Dashboard
-              </h1>
-              <p className="text-gray-300">Welcome back, {session?.user?.name || 'Administrator'}</p>
-            </div>
+      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-28' : 'lg:ml-96'} min-h-screen`}>
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8">
+          {/* Header */}
+          <div className="mb-8 pt-16 lg:pt-0">
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
+            <p className="text-gray-600 dark:text-gray-400">Welcome back, System Administrator</p>
+          </div>
 
-            {/* Stats Grid */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="bg-gradient-to-br from-blue-600/20 to-purple-600/20 backdrop-blur-xl border-white/20 shadow-xl">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-blue-200 text-sm font-medium">Total Students</p>
-                      <p className="text-3xl font-bold text-white">{adminStats.totalStudents.toLocaleString()}</p>
-                    </div>
-                    <Users className="h-8 w-8 text-blue-400" />
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
+            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800">
+              <CardContent className="p-4 lg:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs lg:text-sm font-medium text-blue-600 dark:text-blue-400">Total Students</p>
+                    <p className="text-xl lg:text-3xl font-bold text-blue-700 dark:text-blue-300">{adminStats.totalStudents.toLocaleString()}</p>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-green-600/20 to-blue-600/20 backdrop-blur-xl border-white/20 shadow-xl">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-green-200 text-sm font-medium">Total Teachers</p>
-                      <p className="text-3xl font-bold text-white">{adminStats.totalTeachers}</p>
-                    </div>
-                    <UserCheck className="h-8 w-8 text-green-400" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-purple-600/20 to-pink-600/20 backdrop-blur-xl border-white/20 shadow-xl">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-purple-200 text-sm font-medium">Departments</p>
-                      <p className="text-3xl font-bold text-white">{adminStats.totalDepartments}</p>
-                    </div>
-                    <Building className="h-8 w-8 text-purple-400" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-orange-600/20 to-red-600/20 backdrop-blur-xl border-white/20 shadow-xl">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-orange-200 text-sm font-medium">Pending Approvals</p>
-                      <p className="text-3xl font-bold text-white">{adminStats.pendingApprovals}</p>
-                    </div>
-                    <Clock className="h-8 w-8 text-orange-400" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* System Alerts */}
-            <Card className="bg-black/40 backdrop-blur-xl border-white/20 shadow-2xl">
-              <CardHeader>
-                <CardTitle className="text-xl font-semibold text-white flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-yellow-400" />
-                  System Alerts
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {systemAlerts.map((alert) => (
-                    <div key={alert.id} className="flex items-start gap-3 p-4 rounded-lg bg-white/5 border border-white/10">
-                      <div className={`p-1 rounded-full ${getAlertColor(alert.type)}`}>
-                        {alert.type === 'error' && <AlertCircle className="h-4 w-4" />}
-                        {alert.type === 'warning' && <Clock className="h-4 w-4" />}
-                        {alert.type === 'info' && <CheckCircle2 className="h-4 w-4" />}
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-white">{alert.title}</h4>
-                        <p className="text-sm text-gray-300 mt-1">{alert.message}</p>
-                        <p className="text-xs text-gray-400 mt-2">{formatDate(alert.timestamp)}</p>
-                      </div>
-                      <Badge variant={alert.resolved ? 'secondary' : getPriorityColor(alert.priority)}>
-                        {alert.resolved ? 'Resolved' : alert.priority}
-                      </Badge>
-                    </div>
-                  ))}
+                  <Users className="h-8 w-8 lg:h-12 lg:w-12 text-blue-500" />
                 </div>
               </CardContent>
             </Card>
 
-            {/* Recent Announcements */}
-            <Card className="bg-black/40 backdrop-blur-xl border-white/20 shadow-2xl">
-              <CardHeader>
-                <CardTitle className="text-xl font-semibold text-white flex items-center gap-2">
-                  <Megaphone className="h-5 w-5 text-blue-400" />
-                  Recent Announcements
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {announcements.map((announcement) => (
-                    <div key={announcement.id} className="p-4 rounded-lg bg-white/5 border border-white/10">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-white">{announcement.title}</h4>
-                          <p className="text-sm text-gray-300 mt-1">{announcement.content}</p>
-                          <p className="text-xs text-gray-400 mt-2">By {announcement.createdBy} • {formatDate(announcement.createdAt)}</p>
-                        </div>
-                        <Badge variant={getPriorityColor(announcement.priority)}>
-                          {announcement.priority}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
+            <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">
+              <CardContent className="p-4 lg:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs lg:text-sm font-medium text-green-600 dark:text-green-400">Total Teachers</p>
+                    <p className="text-xl lg:text-3xl font-bold text-green-700 dark:text-green-300">{adminStats.totalTeachers}</p>
+                  </div>
+                  <School className="h-8 w-8 lg:h-12 lg:w-12 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800">
+              <CardContent className="p-4 lg:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs lg:text-sm font-medium text-purple-600 dark:text-purple-400">Departments</p>
+                    <p className="text-xl lg:text-3xl font-bold text-purple-700 dark:text-purple-300">{adminStats.totalDepartments}</p>
+                  </div>
+                  <Building className="h-8 w-8 lg:h-12 lg:w-12 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-orange-200 dark:border-orange-800">
+              <CardContent className="p-4 lg:p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs lg:text-sm font-medium text-orange-600 dark:text-orange-400">Pending Approvals</p>
+                    <p className="text-xl lg:text-3xl font-bold text-orange-700 dark:text-orange-300">{adminStats.pendingApprovals}</p>
+                  </div>
+                  <AlertTriangle className="h-8 w-8 lg:h-12 lg:w-12 text-orange-500" />
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Right Column - AI Chat */}
-          <div className="space-y-6">
-            {/* AI Assistant Selection */}
-            <Card className="bg-black/40 backdrop-blur-xl border-white/20 shadow-2xl">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold text-white">AI Admin Assistant</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 gap-3 mb-4">
-                  {assistants.map((assistant) => (
-                    <button
-                      key={assistant.id}
-                      onClick={() => setSelectedAssistant(assistant.id)}
-                      className={`p-3 rounded-lg border transition-all duration-200 text-left ${
-                        selectedAssistant === assistant.id
-                          ? 'border-white/40 bg-white/10'
-                          : 'border-white/20 bg-white/5 hover:bg-white/10'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg bg-gradient-to-r ${assistant.color}`}>
-                          <assistant.icon className="h-4 w-4 text-white" />
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
+            {/* Left Column */}
+            <div className="xl:col-span-2 space-y-6">
+              {/* System Alerts */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                    System Alerts
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {systemAlerts.length > 0 ? (
+                      systemAlerts.map((alert) => (
+                        <div key={alert.id} className="flex items-start justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className={`w-2 h-2 rounded-full ${getAlertColor(alert.type).replace('text-', 'bg-')}`} />
+                              <h4 className="font-medium text-gray-900 dark:text-white">{alert.title}</h4>
+                              <Badge variant={getPriorityColor(alert.priority)}>{alert.priority}</Badge>
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{alert.message}</p>
+                            <p className="text-xs text-gray-500">{formatDate(alert.timestamp)}</p>
+                          </div>
+                          {alert.resolved ? (
+                            <CheckCircle2 className="w-5 h-5 text-green-500 mt-1" />
+                          ) : (
+                            <AlertTriangle className="w-5 h-5 text-yellow-500 mt-1" />
+                          )}
                         </div>
-                        <span className="text-white font-medium">{assistant.name}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 dark:text-gray-400 text-center py-4">No system alerts</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* Chat Interface */}
-            <Card className="bg-black/40 backdrop-blur-xl border-white/20 shadow-2xl">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-blue-400" />
-                  Chat with {assistants.find(a => a.id === selectedAssistant)?.name}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {/* Chat Messages */}
-                <div className="h-96 overflow-y-auto mb-4 space-y-3 bg-white/5 rounded-lg p-4">
-                  {chatMessages.length === 0 ? (
-                    <div className="text-center text-gray-400 mt-20">
-                      <Brain className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>Start a conversation with your AI assistant</p>
-                    </div>
-                  ) : (
-                    chatMessages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div
-                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                            message.sender === 'user'
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-white/10 text-white border border-white/20'
+              {/* Recent Announcements */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Megaphone className="w-5 h-5 text-blue-500" />
+                    Recent Announcements
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {announcements.length > 0 ? (
+                      announcements.map((announcement) => (
+                        <div key={announcement.id} className="border-l-4 border-blue-500 pl-4 py-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <h4 className="font-medium text-gray-900 dark:text-white">{announcement.title}</h4>
+                            <Badge variant={getPriorityColor(announcement.priority)}>{announcement.priority}</Badge>
+                          </div>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">{announcement.content}</p>
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span>By {announcement.createdBy}</span>
+                            <span>{formatDate(announcement.createdAt)}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 dark:text-gray-400 text-center py-4">No announcements</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right Column - AI Chat */}
+            <div className="order-first xl:order-last">
+              <Card className="h-[400px] xl:h-[600px] flex flex-col">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-sm lg:text-base">
+                    <Brain className="w-4 h-4 lg:w-5 lg:h-5 text-purple-500" />
+                    AI {assistants.find(a => a.id === selectedAssistant)?.name}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col p-0">
+                  {/* Assistant Selection */}
+                  <div className="px-4 lg:px-6 pb-4">
+                    <div className="grid grid-cols-2 gap-2">
+                      {assistants.map((assistant) => (
+                        <Button
+                          key={assistant.id}
+                          variant={selectedAssistant === assistant.id ? "default" : "ghost"}
+                          size="sm"
+                          onClick={() => setSelectedAssistant(assistant.id)}
+                          className={`text-xs ${
+                            selectedAssistant === assistant.id 
+                              ? `bg-gradient-to-r ${assistant.color} text-white border-0` 
+                              : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                           }`}
                         >
-                          <p className="text-sm">{message.text}</p>
+                          <assistant.icon className="w-3 h-3 mr-1" />
+                          <span className="hidden sm:inline">{assistant.name.split(' ')[0]}</span>
+                          <span className="sm:hidden">{assistant.name.split(' ')[0].slice(0, 3)}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Chat Messages */}
+                  <div className="flex-1 overflow-y-auto px-4 lg:px-6 space-y-4">
+                    {chatMessages.length === 0 && (
+                      <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
+                        <Brain className="w-8 h-8 lg:w-12 lg:h-12 mx-auto mb-4 text-gray-300" />
+                        <p className="text-sm lg:text-base">Start a conversation with your AI assistant!</p>
+                        <p className="text-xs lg:text-sm mt-2">Ask about system management, analytics, or administration.</p>
+                      </div>
+                    )}
+                    {chatMessages.map((msg) => (
+                      <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] p-3 rounded-lg ${
+                          msg.sender === 'user' 
+                            ? 'bg-purple-500 text-white' 
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
+                        }`}>
+                          <p className="text-xs lg:text-sm">{msg.text}</p>
                         </div>
                       </div>
-                    ))
-                  )}
-                </div>
+                    ))}
+                  </div>
 
-                {/* Chat Input */}
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                    placeholder="Ask your admin assistant..."
-                    className="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <Button
-                    onClick={() => setIsListening(!isListening)}
-                    variant="ghost"
-                    size="sm"
-                    className={`p-2 rounded-lg transition-all duration-200 ${
-                      isListening ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    <Mic className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    onClick={sendMessage}
-                    variant="ghost"
-                    size="sm"
-                    className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                  {/* Chat Input */}
+                  <div className="p-4 lg:p-6 border-t border-gray-200 dark:border-gray-700">
+                    <div className="flex space-x-2">
+                      <input
+                        type="text"
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                        placeholder="Ask your AI assistant..."
+                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                      <Button size="sm" onClick={sendMessage} className="bg-purple-500 hover:bg-purple-600">
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </div>

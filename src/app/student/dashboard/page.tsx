@@ -167,7 +167,7 @@ export default function StudentDashboard() {
       )}
 
       {/* Floating Sidebar */}
-      <div className={`fixed left-4 top-4 bottom-4 ${sidebarCollapsed ? 'w-20' : 'w-80'} bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl shadow-2xl rounded-2xl border border-white/20 dark:border-slate-700/50 z-50 transition-all duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+      <div className={`fixed left-4 top-4 bottom-4 ${sidebarCollapsed ? 'w-20' : 'w-80'} bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl shadow-2xl rounded-2xl border border-white/20 dark:border-slate-700/50 z-50 transition-all duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} overflow-hidden`}>
         <div className={`h-full flex flex-col ${sidebarCollapsed ? 'p-4' : 'p-6'}`}>
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -228,7 +228,8 @@ export default function StudentDashboard() {
           </div>
 
           {/* Navigation */}
-          <nav className="space-y-2 mb-6">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none">
+            <nav className="space-y-2 mb-6">
             <Button 
               variant="default" 
               className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700`}
@@ -287,54 +288,55 @@ export default function StudentDashboard() {
               <Settings className="w-5 h-5" />
               {!sidebarCollapsed && <span className="ml-3">Settings</span>}
             </Button>
-          </nav>
+            </nav>
 
-          {!sidebarCollapsed && (
-            <>
-              {/* Quick Stats */}
-              <div className="mb-6">
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
-                  <TrendingUp className="w-4 h-4 mr-2" />
-                  Quick Overview
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-3 rounded-xl border border-blue-200/50 dark:border-blue-800/50">
-                    <div className="flex items-center justify-between">
-                      <Calendar className="w-4 h-4 text-blue-600" />
-                      <span className="text-lg font-bold text-blue-700 dark:text-blue-400">{upcomingReminders.length}</span>
+            {!sidebarCollapsed && (
+              <>
+                {/* Quick Stats */}
+                <div className="mb-6">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                    <TrendingUp className="w-4 h-4 mr-2" />
+                    Quick Overview
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-3 rounded-xl border border-blue-200/50 dark:border-blue-800/50">
+                      <div className="flex items-center justify-between">
+                        <Calendar className="w-4 h-4 text-blue-600" />
+                        <span className="text-lg font-bold text-blue-700 dark:text-blue-400">{upcomingReminders.length}</span>
+                      </div>
+                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Events</p>
                     </div>
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Events</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-3 rounded-xl border border-green-200/50 dark:border-green-800/50">
-                    <div className="flex items-center justify-between">
-                      <Bell className="w-4 h-4 text-green-600" />
-                      <span className="text-lg font-bold text-green-700 dark:text-green-400">{announcements.length}</span>
+                    <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-3 rounded-xl border border-green-200/50 dark:border-green-800/50">
+                      <div className="flex items-center justify-between">
+                        <Bell className="w-4 h-4 text-green-600" />
+                        <span className="text-lg font-bold text-green-700 dark:text-green-400">{announcements.length}</span>
+                      </div>
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">Updates</p>
                     </div>
-                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">Updates</p>
                   </div>
                 </div>
-              </div>
 
-              {/* Recent Activity */}
-              <div className="flex-1 min-h-0 mb-6">
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
-                  <Clock className="w-4 h-4 mr-2" />
-                  Recent Activity
-                </h3>
-                <div className="space-y-3 overflow-y-auto max-h-32">
-                  {upcomingReminders.slice(0, 3).map((item) => (
-                    <div key={item.id} className="p-3 bg-gray-50/80 dark:bg-gray-700/50 rounded-lg border border-gray-200/50 dark:border-gray-600/50">
-                      <h4 className="font-medium text-gray-900 dark:text-white text-sm line-clamp-1">{item.title}</h4>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-                        <Clock className="w-3 h-3 mr-1" />
-                        {formatDate(item.dueDate)}
-                      </p>
-                    </div>
-                  ))}
+                {/* Recent Activity */}
+                <div className="flex-1 min-h-0 mb-6">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                    <Clock className="w-4 h-4 mr-2" />
+                    Recent Activity
+                  </h3>
+                  <div className="space-y-3 overflow-y-auto max-h-32">
+                    {upcomingReminders.slice(0, 3).map((item) => (
+                      <div key={item.id} className="p-3 bg-gray-50/80 dark:bg-gray-700/50 rounded-lg border border-gray-200/50 dark:border-gray-600/50">
+                        <h4 className="font-medium text-gray-900 dark:text-white text-sm line-clamp-1">{item.title}</h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center">
+                          <Clock className="w-3 h-3 mr-1" />
+                          {formatDate(item.dueDate)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
 
           {/* Sign Out - Always at bottom */}
           <div className="mt-auto pt-4 border-t border-gray-200/50 dark:border-gray-700/50">

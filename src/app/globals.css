@@ -120,3 +120,94 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom Scrollbar Styles */
+@layer utilities {
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .scrollbar-thumb-purple-300::-webkit-scrollbar-thumb {
+    background-color: rgb(196 181 253);
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thumb-purple-600::-webkit-scrollbar-thumb {
+    background-color: rgb(147 51 234);
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thumb-green-300::-webkit-scrollbar-thumb {
+    background-color: rgb(134 239 172);
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thumb-green-600::-webkit-scrollbar-thumb {
+    background-color: rgb(22 163 74);
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thumb-orange-300::-webkit-scrollbar-thumb {
+    background-color: rgb(253 186 116);
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thumb-orange-600::-webkit-scrollbar-thumb {
+    background-color: rgb(234 88 12);
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thumb-blue-300::-webkit-scrollbar-thumb {
+    background-color: rgb(147 197 253);
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thumb-blue-600::-webkit-scrollbar-thumb {
+    background-color: rgb(37 99 235);
+    border-radius: 3px;
+  }
+  
+  .scrollbar-track-transparent::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  /* Dark mode scrollbar */
+  .dark .scrollbar-thumb-purple-300::-webkit-scrollbar-thumb {
+    background-color: rgb(147 51 234);
+  }
+  
+  .dark .scrollbar-thumb-green-300::-webkit-scrollbar-thumb {
+    background-color: rgb(22 163 74);
+  }
+  
+  .dark .scrollbar-thumb-orange-300::-webkit-scrollbar-thumb {
+    background-color: rgb(234 88 12);
+  }
+  
+  .dark .scrollbar-thumb-blue-300::-webkit-scrollbar-thumb {
+    background-color: rgb(37 99 235);
+  }
+
+  /* Hide scrollbar utility class */
+  .scrollbar-none {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* Internet Explorer 10+ */
+  }
+  
+  .scrollbar-none::-webkit-scrollbar {
+    display: none; /* WebKit */
+  }
+}
