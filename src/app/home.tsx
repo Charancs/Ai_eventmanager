@@ -6,7 +6,6 @@ import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { MessageCircle, Users, Building, GraduationCap } from 'lucide-react'
-import { AuthDebug } from '@/components/auth-debug'
 
 export default function HomePage() {
   const { data: session, status } = useSession()
@@ -201,7 +200,6 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
-      <AuthDebug />
     </div>
   )
 }
