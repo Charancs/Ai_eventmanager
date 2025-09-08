@@ -2,27 +2,86 @@
 
 import { useState, useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
-import { DashboardLayout } from '@/components/dashboard-layout'
-import { Chatbot } from '@/components/chatbot'
+import { useTheme } from 'next-themes'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Users, Calendar, MessageSquare, BookOpen, Plus, GraduationCap, X, Clock, Bell, LogOut, BarChart } from 'lucide-react'
+import { 
+  Users, 
+  Calendar, 
+  MessageSquare, 
+  BookOpen, 
+  Plus, 
+  GraduationCap, 
+  Clock, 
+  Bell, 
+  LogOut, 
+  BarChart,
+  Brain,
+  CheckCircle2,
+  AlertCircle,
+  Mic,
+  Image,
+  Send,
+  School,
+  UserCheck,
+  Megaphone,
+  Sun,
+  Moon,
+  Menu,
+  X,
+  ChevronDown,
+  Home,
+  User,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Presentation
+} from 'lucide-react'
+
+interface TeacherClass {
+  id: string
+  name: string
+  code: string
+  semester: string
+  students: number
+  schedule: string
+}
+
+interface TeacherEvent {
+  id: string
+  title: string
+  type: string
+  date: Date
+  duration: string
+  location: string
+  description: string
+}
 
 interface ClassAnnouncement {
   id: string
   title: string
   content: string
-  createdAt: string
+  classId: string
+  className: string
   priority: string
+  createdAt: Date
+  type: string
 }
 
 export default function TeacherDashboard() {
   const { data: session } = useSession()
+  const { theme, setTheme } = useTheme()
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [selectedAssistant, setSelectedAssistant] = useState('general')
+  const [chatMessages, setChatMessages] = useState<any[]>([])
+  const [newMessage, setNewMessage] = useState('')
+  const [isListening, setIsListening] = useState(false)
+  const [teacherClasses, setTeacherClasses] = useState<TeacherClass[]>([])
+  const [upcomingEvents, setUpcomingEvents] = useState<TeacherEvent[]>([])
   const [classAnnouncements, setClassAnnouncements] = useState<ClassAnnouncement[]>([])
-  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     fetchDashboardData()
@@ -30,18 +89,22 @@ export default function TeacherDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch teacher's announcements
-      const announcementsResponse = await fetch('/api/announcements/teacher')
-      if (announcementsResponse.ok) {
-        const announcementsData = await announcementsResponse.json()
-        setClassAnnouncements(announcementsData.slice(0, 5))
+      const teacherResponse = await fetch('/api/teacher?type=classes')
+      if (teacherResponse.ok) {
+        const teacherData = await teacherResponse.json()
+        setTeacherClasses(teacherData.data)
       }
 
-      // Fetch upcoming events
-      const eventsResponse = await fetch('/api/events/teacher')
+      const eventsResponse = await fetch('/api/teacher?type=events')
       if (eventsResponse.ok) {
         const eventsData = await eventsResponse.json()
-        setUpcomingEvents(eventsData.slice(0, 5))
+        setUpcomingEvents(eventsData.data?.slice(0, 5) || [])
+      }
+
+      const announcementsResponse = await fetch('/api/teacher?type=announcements')
+      if (announcementsResponse.ok) {
+        const announcementsData = await announcementsResponse.json()
+        setClassAnnouncements(announcementsData.data?.slice(0, 5) || [])
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
@@ -50,17 +113,47 @@ export default function TeacherDashboard() {
     }
   }
 
+  const assistants = [
+    { id: 'general', name: 'Teaching Assistant', icon: Brain, color: 'from-blue-500 to-purple-600' },
+    { id: 'academic', name: 'Curriculum Advisor', icon: BookOpen, color: 'from-green-500 to-blue-600' },
+    { id: 'grading', name: 'Grading Helper', icon: FileText, color: 'from-purple-500 to-pink-600' },
+    { id: 'analytics', name: 'Class Analytics', icon: Presentation, color: 'from-orange-500 to-red-600' }
+  ]
+
+  const sendMessage = async () => {
+    if (!newMessage.trim()) return
+
+    const message = {
+      id: Date.now().toString(),
+      text: newMessage,
+      sender: 'user',
+      timestamp: new Date()
+    }
+
+    setChatMessages([...chatMessages, message])
+    setNewMessage('')
+
+    setTimeout(() => {
+      const botResponse = {
+        id: (Date.now() + 1).toString(),
+        text: `I'm your ${assistants.find(a => a.id === selectedAssistant)?.name}. How can I help you with your teaching tasks today?`,
+        sender: 'bot',
+        timestamp: new Date()
+      }
+      setChatMessages(prev => [...prev, botResponse])
+    }, 1000)
+  }
+
   const getPriorityColor = (priority: string) => {
-    switch (priority.toUpperCase()) {
-      case 'URGENT': return 'bg-red-500'
-      case 'HIGH': return 'bg-orange-500'
-      case 'MEDIUM': return 'bg-blue-500'
-      case 'LOW': return 'bg-green-500'
-      default: return 'bg-gray-500'
+    switch (priority) {
+      case 'high': return 'destructive'
+      case 'medium': return 'default'
+      case 'low': return 'secondary'
+      default: return 'default'
     }
   }
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | Date) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -71,323 +164,293 @@ export default function TeacherDashboard() {
 
   if (loading) {
     return (
-      <DashboardLayout title="Teacher Dashboard" allowedRoles={['TEACHER']}>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
-        </div>
-      </DashboardLayout>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-white text-xl">Loading teacher dashboard...</div>
+      </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 relative">
-      {/* Dark Floating Sidebar */}
-      <div className={`fixed top-0 left-0 h-full w-72 bg-gray-900 transform transition-transform duration-300 ease-in-out z-50 ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-72'
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500/30 rounded-full blur-xl animate-pulse"></div>
+        <div className="absolute top-40 -left-40 w-80 h-80 bg-blue-500/20 rounded-full blur-xl animate-pulse delay-1000"></div>
+        <div className="absolute bottom-40 right-1/3 w-60 h-60 bg-pink-500/20 rounded-full blur-xl animate-pulse delay-2000"></div>
+      </div>
+
+      {/* Floating Sidebar */}
+      <div className={`fixed left-4 top-4 bottom-4 z-50 transition-all duration-300 ${
+        sidebarCollapsed ? 'w-16' : 'w-20'
       }`}>
-        <div className="h-full flex flex-col">
-          {/* Sidebar Header */}
-          <div className="p-6 border-b border-gray-800">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                  <GraduationCap className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold text-lg">Teacher Portal</h3>
-                  <p className="text-gray-400 text-sm">{session?.user?.name}</p>
-                </div>
-              </div>
-              <Button
-                onClick={() => setSidebarOpen(false)}
-                variant="ghost"
-                size="sm"
-                className="text-gray-400 hover:text-white hover:bg-gray-800"
-              >
-                <X className="h-5 w-5" />
+        <Card className="h-full bg-black/40 backdrop-blur-xl border-white/20 shadow-2xl">
+          <CardContent className="p-4 h-full flex flex-col">
+            {/* Toggle Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="mb-4 p-2 h-12 w-12 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200"
+            >
+              {sidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+            </Button>
+
+            {/* Navigation Icons */}
+            <div className="flex-1 space-y-3">
+              <Button variant="ghost" size="sm" className="w-12 h-12 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200">
+                <Home className="h-5 w-5" />
+              </Button>
+              <Button variant="ghost" size="sm" className="w-12 h-12 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200">
+                <BookOpen className="h-5 w-5" />
+              </Button>
+              <Button variant="ghost" size="sm" className="w-12 h-12 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200">
+                <Users className="h-5 w-5" />
+              </Button>
+              <Button variant="ghost" size="sm" className="w-12 h-12 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200">
+                <Calendar className="h-5 w-5" />
+              </Button>
+              <Button variant="ghost" size="sm" className="w-12 h-12 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200">
+                <BarChart className="h-5 w-5" />
               </Button>
             </div>
-          </div>
 
-          {/* Sidebar Content */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {/* Quick Actions */}
-            <div>
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                  <Plus className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h4 className="text-white font-semibold">Quick Actions</h4>
-                  <p className="text-gray-400 text-sm">Teacher tools</p>
-                </div>
-              </div>
-              <div className="space-y-3 ml-13">
-                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white justify-start">
-                  <MessageSquare className="h-4 w-4 mr-2" />
-                  Create Announcement
-                </Button>
-                <Button variant="ghost" className="w-full text-gray-300 hover:text-white hover:bg-gray-800 justify-start">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Schedule Event
-                </Button>
-                <Button variant="ghost" className="w-full text-gray-300 hover:text-white hover:bg-gray-800 justify-start">
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  Set Assignment
-                </Button>
-              </div>
+            {/* Theme Toggle */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="mb-3 w-12 h-12 rounded-xl bg-white/10 hover:bg-white/20 transition-all duration-200"
+            >
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+
+            {/* Sign Out */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+              className="w-12 h-12 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 transition-all duration-200"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Content */}
+      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'ml-24' : 'ml-28'} mr-4 py-4`}>
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Left Column - Classes and Events */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-purple-200 to-pink-200 bg-clip-text text-transparent mb-2">
+                Teacher Dashboard
+              </h1>
+              <p className="text-gray-300">Welcome back, {session?.user?.name || 'Professor'}</p>
             </div>
 
-            {/* Class Statistics */}
-            <div>
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
-                  <BarChart className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h4 className="text-white font-semibold">Class Stats</h4>
-                  <p className="text-gray-400 text-sm">Overview</p>
-                </div>
-              </div>
-              <div className="space-y-3 ml-13">
-                <div className="p-3 bg-gray-800 rounded-lg border-l-4 border-blue-500">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Users className="h-5 w-5 text-blue-400 mr-2" />
-                      <span className="text-white font-medium">Students</span>
+            {/* Classes Grid */}
+            <Card className="bg-black/40 backdrop-blur-xl border-white/20 shadow-2xl">
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold text-white flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-blue-400" />
+                  My Classes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {teacherClasses.map((cls) => (
+                    <div key={cls.id} className="p-4 rounded-lg bg-gradient-to-br from-blue-600/20 to-purple-600/20 border border-white/20">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h4 className="font-medium text-white">{cls.name}</h4>
+                          <p className="text-sm text-blue-200">{cls.code} • {cls.semester} Semester</p>
+                        </div>
+                        <Badge variant="secondary">{cls.students} students</Badge>
+                      </div>
+                      <p className="text-sm text-gray-300">{cls.schedule}</p>
+                      <div className="flex gap-2 mt-3">
+                        <Button size="sm" variant="ghost" className="text-xs bg-white/10 hover:bg-white/20">
+                          View Details
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-xs bg-white/10 hover:bg-white/20">
+                          Attendance
+                        </Button>
+                      </div>
                     </div>
-                    <span className="text-white font-bold">120</span>
-                  </div>
+                  ))}
                 </div>
-                <div className="p-3 bg-gray-800 rounded-lg border-l-4 border-green-500">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <BookOpen className="h-5 w-5 text-green-400 mr-2" />
-                      <span className="text-white font-medium">Classes</span>
-                    </div>
-                    <span className="text-white font-bold">5</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Recent Announcements */}
-            <div>
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 bg-orange-600 rounded-lg flex items-center justify-center">
-                  <Bell className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h4 className="text-white font-semibold">My Announcements</h4>
-                  <p className="text-gray-400 text-sm">Recent posts</p>
-                </div>
-              </div>
-              <div className="space-y-3 ml-13">
-                {classAnnouncements.length > 0 ? classAnnouncements.slice(0, 2).map((announcement) => (
-                  <div key={announcement.id} className="p-3 bg-gray-800 rounded-lg border-l-4 border-orange-500">
-                    <h5 className="text-white font-medium text-sm">{announcement.title}</h5>
-                    <p className="text-gray-400 text-xs mt-1">{formatDate(announcement.createdAt)}</p>
-                    <Badge variant="secondary" className={`mt-2 ${getPriorityColor(announcement.priority)} text-white text-xs`}>
-                      {announcement.priority}
-                    </Badge>
-                  </div>
-                )) : (
-                  <div className="p-4 bg-gray-800 rounded-lg text-center">
-                    <Bell className="h-8 w-8 text-gray-600 mx-auto mb-2" />
-                    <p className="text-gray-400 text-sm">No announcements</p>
-                  </div>
-                )}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Upcoming Events */}
-            <div>
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 bg-green-600 rounded-lg flex items-center justify-center">
-                  <Calendar className="h-5 w-5 text-white" />
+            <Card className="bg-black/40 backdrop-blur-xl border-white/20 shadow-2xl">
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold text-white flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-green-400" />
+                  Upcoming Events
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {upcomingEvents.map((event) => (
+                    <div key={event.id} className="flex items-start gap-3 p-4 rounded-lg bg-white/5 border border-white/10">
+                      <div className="p-2 rounded-lg bg-gradient-to-br from-green-500/20 to-blue-500/20">
+                        {event.type === 'exam' && <FileText className="h-4 w-4 text-green-400" />}
+                        {event.type === 'meeting' && <Users className="h-4 w-4 text-blue-400" />}
+                        {event.type === 'workshop' && <Presentation className="h-4 w-4 text-purple-400" />}
+                        {event.type === 'review' && <CheckCircle2 className="h-4 w-4 text-orange-400" />}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-white">{event.title}</h4>
+                        <p className="text-sm text-gray-300 mt-1">{event.description}</p>
+                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                          <span>{formatDate(event.date)}</span>
+                          <span>{event.duration}</span>
+                          <span>{event.location}</span>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="capitalize">
+                        {event.type}
+                      </Badge>
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <h4 className="text-white font-semibold">Upcoming Events</h4>
-                  <p className="text-gray-400 text-sm">Your schedule</p>
+              </CardContent>
+            </Card>
+
+            {/* Class Announcements */}
+            <Card className="bg-black/40 backdrop-blur-xl border-white/20 shadow-2xl">
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold text-white flex items-center gap-2">
+                  <Megaphone className="h-5 w-5 text-purple-400" />
+                  My Class Announcements
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {classAnnouncements.map((announcement) => (
+                    <div key={announcement.id} className="p-4 rounded-lg bg-white/5 border border-white/10">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-white">{announcement.title}</h4>
+                          <p className="text-sm text-blue-200 mt-1">{announcement.className}</p>
+                          <p className="text-sm text-gray-300 mt-2">{announcement.content}</p>
+                          <p className="text-xs text-gray-400 mt-2">{formatDate(announcement.createdAt)}</p>
+                        </div>
+                        <Badge variant={getPriorityColor(announcement.priority)}>
+                          {announcement.priority}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-              <div className="space-y-3 ml-13">
-                {upcomingEvents.length > 0 ? upcomingEvents.slice(0, 2).map((event, index) => (
-                  <div key={index} className="p-3 bg-gray-800 rounded-lg border-l-4 border-green-500">
-                    <h5 className="text-white font-medium text-sm">{event.title}</h5>
-                    <p className="text-gray-400 text-xs mt-1">{formatDate(event.date)}</p>
-                    <Badge variant="secondary" className="mt-2 bg-green-600 text-white text-xs">
-                      {event.type}
-                    </Badge>
-                  </div>
-                )) : (
-                  <div className="p-4 bg-gray-800 rounded-lg text-center">
-                    <Calendar className="h-8 w-8 text-gray-600 mx-auto mb-2" />
-                    <p className="text-gray-400 text-sm">No upcoming events</p>
-                  </div>
-                )}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Sidebar Footer */}
-          <div className="p-6 border-t border-gray-800">
-            <Button
-              onClick={() => signOut()}
-              variant="ghost"
-              className="w-full text-red-400 hover:text-red-300 hover:bg-gray-800 justify-start"
-            >
-              <LogOut className="h-4 w-4 mr-3" />
-              Sign Out
-            </Button>
+          {/* Right Column - AI Chat */}
+          <div className="space-y-6">
+            {/* AI Assistant Selection */}
+            <Card className="bg-black/40 backdrop-blur-xl border-white/20 shadow-2xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-white">AI Teaching Assistant</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-3 mb-4">
+                  {assistants.map((assistant) => (
+                    <button
+                      key={assistant.id}
+                      onClick={() => setSelectedAssistant(assistant.id)}
+                      className={`p-3 rounded-lg border transition-all duration-200 text-left ${
+                        selectedAssistant === assistant.id
+                          ? 'border-white/40 bg-white/10'
+                          : 'border-white/20 bg-white/5 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg bg-gradient-to-r ${assistant.color}`}>
+                          <assistant.icon className="h-4 w-4 text-white" />
+                        </div>
+                        <span className="text-white font-medium">{assistant.name}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Chat Interface */}
+            <Card className="bg-black/40 backdrop-blur-xl border-white/20 shadow-2xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-blue-400" />
+                  Chat with {assistants.find(a => a.id === selectedAssistant)?.name}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* Chat Messages */}
+                <div className="h-96 overflow-y-auto mb-4 space-y-3 bg-white/5 rounded-lg p-4">
+                  {chatMessages.length === 0 ? (
+                    <div className="text-center text-gray-400 mt-20">
+                      <Brain className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>Start a conversation with your teaching assistant</p>
+                    </div>
+                  ) : (
+                    chatMessages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                            message.sender === 'user'
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white/10 text-white border border-white/20'
+                          }`}
+                        >
+                          <p className="text-sm">{message.text}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Chat Input */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                    placeholder="Ask your teaching assistant..."
+                    className="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <Button
+                    onClick={() => setIsListening(!isListening)}
+                    variant="ghost"
+                    size="sm"
+                    className={`p-2 rounded-lg transition-all duration-200 ${
+                      isListening ? 'bg-red-500/20 text-red-400' : 'bg-white/10 text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    <Mic className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    onClick={sendMessage}
+                    variant="ghost"
+                    size="sm"
+                    className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all duration-200"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
-
-      {/* Sidebar Toggle Button */}
-      <Button
-        onClick={() => setSidebarOpen(true)}
-        className="fixed top-6 left-6 z-40 bg-gray-900 hover:bg-gray-800 text-white shadow-lg rounded-lg p-3"
-        size="sm"
-      >
-        <GraduationCap className="h-5 w-5" />
-      </Button>
-
-      {/* Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Main Content */}
-      <DashboardLayout title="Teacher Dashboard" allowedRoles={['TEACHER']}>
-        <div className="px-4 py-6 sm:px-0">
-          {/* Welcome Section */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">
-              Welcome, Professor {session?.user?.name?.split(' ')[0]}! 👨‍🏫
-            </h1>
-            <p className="text-gray-600 mt-2">
-              {session?.user?.department} Department
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column - Statistics & Quick Info */}
-            <div className="space-y-6">
-              {/* Class Statistics */}
-              <div className="grid grid-cols-2 gap-4">
-                <Card className="bg-white shadow-sm border border-gray-200">
-                  <CardContent className="p-4">
-                    <div className="flex items-center">
-                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <Users className="h-6 w-6 text-blue-600" />
-                      </div>
-                      <div className="ml-3">
-                        <p className="text-sm font-medium text-gray-600">Students</p>
-                        <p className="text-2xl font-bold text-gray-900">120</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="bg-white shadow-sm border border-gray-200">
-                  <CardContent className="p-4">
-                    <div className="flex items-center">
-                      <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                        <BookOpen className="h-6 w-6 text-green-600" />
-                      </div>
-                      <div className="ml-3">
-                        <p className="text-sm font-medium text-gray-600">Classes</p>
-                        <p className="text-2xl font-bold text-gray-900">5</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Recent Announcements */}
-              <Card className="bg-white shadow-sm border border-gray-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-gray-900">
-                    <MessageSquare className="h-5 w-5 mr-2" />
-                    My Recent Announcements
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {classAnnouncements.length > 0 ? (
-                    <div className="space-y-3">
-                      {classAnnouncements.map((announcement) => (
-                        <div key={announcement.id} className="border-l-4 border-blue-500 pl-4 py-2">
-                          <h4 className="font-medium text-gray-900">{announcement.title}</h4>
-                          <p className="text-sm text-gray-500 mt-1">
-                            {announcement.content.substring(0, 80)}...
-                          </p>
-                          <div className="flex items-center justify-between mt-2">
-                            <p className="text-xs text-gray-400">{formatDate(announcement.createdAt)}</p>
-                            <Badge variant="secondary" className={`${getPriorityColor(announcement.priority)} text-white text-xs`}>
-                              {announcement.priority}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-500 text-center py-8">No recent announcements</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Upcoming Events */}
-              <Card className="bg-white shadow-sm border border-gray-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-gray-900">
-                    <Calendar className="h-5 w-5 mr-2" />
-                    Upcoming Events
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {upcomingEvents.length > 0 ? (
-                    <div className="space-y-3">
-                      {upcomingEvents.map((event, index) => (
-                        <div key={index} className="border-l-4 border-green-500 pl-4 py-2">
-                          <h4 className="font-medium text-gray-900">{event.title}</h4>
-                          <p className="text-sm text-gray-500">
-                            {formatDate(event.date)}
-                          </p>
-                          <Badge variant="secondary" className="mt-1">{event.type}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-500 text-center py-8">No upcoming events</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Right Column - AI Assistant */}
-            <div className="lg:col-span-2">
-              <Card className="bg-white shadow-sm border border-gray-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-gray-900">
-                    <MessageSquare className="h-5 w-5 mr-2" />
-                    AI Assistant
-                  </CardTitle>
-                  <p className="text-sm text-gray-600">
-                    Ask me to help with class management, student queries, or administrative tasks.
-                  </p>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <Chatbot userRole="TEACHER" />
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </DashboardLayout>
     </div>
   )
 }
