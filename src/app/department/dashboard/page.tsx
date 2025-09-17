@@ -6,6 +6,9 @@ import { useTheme } from 'next-themes'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { notificationsApi, systemApi, departmentsApi } from '@/lib/api'
+import DocumentSearch from '@/components/document-search'
+import DocumentUpload from '@/components/document-upload'
 import { 
   Users, 
   Calendar, 
@@ -92,6 +95,10 @@ export default function DepartmentDashboard() {
   const [recentAnnouncements, setRecentAnnouncements] = useState<DepartmentAnnouncement[]>([])
   const [upcomingEvents, setUpcomingEvents] = useState<DepartmentEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('overview')
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [systemStats, setSystemStats] = useState<any>({})
+  const [departments, setDepartments] = useState<any[]>([])
 
   useEffect(() => {
     setMounted(true)
@@ -101,7 +108,22 @@ export default function DepartmentDashboard() {
   const fetchDashboardData = async () => {
     try {
       const department = session?.user?.department || 'Computer Science'
+      // Mock department ID (in real app, get from session)
+      const departmentId = 1;
       
+      // Fetch notifications from backend
+      const notificationsData = await notificationsApi.getUserNotifications(departmentId, { limit: 5 });
+      setNotifications(notificationsData.slice(0, 5));
+
+      // Fetch system stats
+      const statsData = await systemApi.getStats();
+      setSystemStats(statsData);
+
+      // Fetch departments list
+      const departmentsData = await departmentsApi.listDepartments();
+      setDepartments(departmentsData.slice(0, 10));
+      
+      // Keep existing API calls
       const statsResponse = await fetch(`/api/department?type=stats&department=${encodeURIComponent(department)}`)
       if (statsResponse.ok) {
         const statsData = await statsResponse.json()
@@ -177,9 +199,9 @@ export default function DepartmentDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-orange-50 to-red-50 dark:from-slate-950 dark:via-orange-950 dark:to-red-950 flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
-          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+          <div className="w-16 h-16 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin"></div>
           <p className="text-gray-600 dark:text-gray-400">Loading department dashboard...</p>
         </div>
       </div>
@@ -187,7 +209,7 @@ export default function DepartmentDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900" suppressHydrationWarning>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-orange-50 to-red-50 dark:from-slate-950 dark:via-orange-950 dark:to-red-950" suppressHydrationWarning>
       {/* Mobile Menu Button */}
       <Button
         onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -265,8 +287,7 @@ export default function DepartmentDashboard() {
           </div>
 
           {/* Navigation */}
-          <div className="flex-1 overflow-y-auto scrollbar-none">
-            <nav className="space-y-2 mb-6">
+          <nav className="space-y-2 mb-6">
             <Button 
               variant="default" 
               className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700`}
@@ -346,72 +367,71 @@ export default function DepartmentDashboard() {
               <Settings className="w-5 h-5" />
               {!sidebarCollapsed && <span className="ml-3">Settings</span>}
             </Button>
-            </nav>
+          </nav>
 
-            {!sidebarCollapsed && (
-              <>
-                {/* Quick Stats */}
-                <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
-                    <TrendingUp className="w-4 h-4 mr-2" />
-                    Department Overview
-                  </h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Card className="p-3 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-orange-200 dark:border-orange-800">
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-orange-600 dark:text-orange-400">{departmentStats.totalStudents}</div>
-                        <div className="text-xs text-orange-500 dark:text-orange-400">Students</div>
-                      </div>
-                    </Card>
-                    <Card className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800">
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{departmentStats.totalTeachers}</div>
-                        <div className="text-xs text-blue-500 dark:text-blue-400">Faculty</div>
-                      </div>
-                    </Card>
-                    <Card className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-green-600 dark:text-green-400">{departmentStats.avgAttendance}</div>
-                        <div className="text-xs text-green-500 dark:text-green-400">Attendance</div>
-                      </div>
-                    </Card>
-                    <Card className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800">
-                      <div className="text-center">
-                        <div className="text-lg font-bold text-purple-600 dark:text-purple-400">{departmentStats.placementRate}</div>
-                        <div className="text-xs text-purple-500 dark:text-purple-400">Placements</div>
-                      </div>
-                    </Card>
-                  </div>
+          {!sidebarCollapsed && (
+            <>
+              {/* Quick Stats */}
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  Department Overview
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <Card className="p-3 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-orange-200 dark:border-orange-800">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-orange-600 dark:text-orange-400">{departmentStats.totalStudents}</div>
+                      <div className="text-xs text-orange-500 dark:text-orange-400">Students</div>
+                    </div>
+                  </Card>
+                  <Card className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{departmentStats.totalTeachers}</div>
+                      <div className="text-xs text-blue-500 dark:text-blue-400">Faculty</div>
+                    </div>
+                  </Card>
+                  <Card className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-green-600 dark:text-green-400">{departmentStats.avgAttendance}</div>
+                      <div className="text-xs text-green-500 dark:text-green-400">Attendance</div>
+                    </div>
+                  </Card>
+                  <Card className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-purple-600 dark:text-purple-400">{departmentStats.placementRate}</div>
+                      <div className="text-xs text-purple-500 dark:text-purple-400">Placements</div>
+                    </div>
+                  </Card>
                 </div>
+              </div>
 
-                {/* AI Assistants */}
-                <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
-                    <Brain className="w-4 h-4 mr-2" />
-                    Department Assistants
-                  </h3>
-                  <div className="space-y-2">
-                    {assistants.map((assistant) => (
-                      <Button
-                        key={assistant.id}
-                        variant={selectedAssistant === assistant.id ? "default" : "ghost"}
-                        size="sm"
-                        onClick={() => setSelectedAssistant(assistant.id)}
-                        className={`w-full justify-start text-xs ${
-                          selectedAssistant === assistant.id 
-                            ? `bg-gradient-to-r ${assistant.color} text-white` 
-                            : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                        }`}
-                      >
-                        <assistant.icon className="w-4 h-4 mr-2" />
-                        {assistant.name}
-                      </Button>
-                    ))}
-                  </div>
+              {/* AI Assistants */}
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                  <Brain className="w-4 h-4 mr-2" />
+                  Department Assistants
+                </h3>
+                <div className="space-y-2">
+                  {assistants.map((assistant) => (
+                    <Button
+                      key={assistant.id}
+                      variant={selectedAssistant === assistant.id ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => setSelectedAssistant(assistant.id)}
+                      className={`w-full justify-start text-xs ${
+                        selectedAssistant === assistant.id 
+                          ? `bg-gradient-to-r ${assistant.color} text-white` 
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
+                    >
+                      <assistant.icon className="w-4 h-4 mr-2" />
+                      {assistant.name}
+                    </Button>
+                  ))}
                 </div>
-              </>
-            )}
-          </div>
+              </div>
+            </>
+          )}
 
           {/* Sign Out */}
           <div className="mt-auto">
@@ -429,69 +449,162 @@ export default function DepartmentDashboard() {
       </div>
 
       {/* Main Content */}
-      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-28' : 'lg:ml-96'} min-h-screen`}>
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-8">
+      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'ml-28' : 'ml-96'} mr-8 py-8`}>
+        <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-8 pt-16 lg:pt-0">
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Department Dashboard</h1>
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Department Dashboard</h1>
             <p className="text-gray-600 dark:text-gray-400">Welcome back, {session?.user?.name}</p>
             <p className="text-sm text-gray-500 dark:text-gray-500">{session?.user?.department || 'Computer Science'} Department</p>
           </div>
 
+          {/* Tab Navigation */}
+          <div className="mb-8 border-b border-gray-200 dark:border-gray-700">
+            <nav className="flex space-x-8">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'overview'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Overview
+              </button>
+              <button
+                onClick={() => setActiveTab('documents')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'documents'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Upload Documents
+              </button>
+              <button
+                onClick={() => setActiveTab('search')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'search'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Search Documents
+              </button>
+              <button
+                onClick={() => setActiveTab('departments')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'departments'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Departments
+              </button>
+            </nav>
+          </div>
+
+          {/* Conditional Content Based on Active Tab */}
+          {activeTab === 'documents' && (
+            <div className="mb-8">
+              <DocumentUpload />
+            </div>
+          )}
+
+          {activeTab === 'search' && (
+            <div className="mb-8">
+              <DocumentSearch />
+            </div>
+          )}
+
+          {activeTab === 'departments' && (
+            <div className="mb-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="w-5 h-5 text-blue-500" />
+                    All Departments
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {departments.length > 0 ? (
+                      departments.map((dept: any, index: number) => (
+                        <div key={index} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <h4 className="font-medium text-gray-900 dark:text-white">{dept.name}</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{dept.description}</p>
+                          <div className="mt-2 flex items-center gap-2">
+                            <Badge variant="outline">{dept.code}</Badge>
+                            <span className="text-xs text-gray-500">{dept.head_name}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 dark:text-gray-400 text-center py-4 col-span-full">No departments data</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {activeTab === 'overview' && (
+          <>
+
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <Card className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-orange-200 dark:border-orange-800">
-              <CardContent className="p-4 lg:p-6">
+              <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs lg:text-sm font-medium text-orange-600 dark:text-orange-400">Total Students</p>
-                    <p className="text-xl lg:text-3xl font-bold text-orange-700 dark:text-orange-300">{departmentStats.totalStudents.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-orange-600 dark:text-orange-400">Total Students</p>
+                    <p className="text-3xl font-bold text-orange-700 dark:text-orange-300">{departmentStats.totalStudents.toLocaleString()}</p>
                   </div>
-                  <GraduationCap className="h-8 w-8 lg:h-12 lg:w-12 text-orange-500" />
+                  <GraduationCap className="h-12 w-12 text-orange-500" />
                 </div>
               </CardContent>
             </Card>
 
             <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800">
-              <CardContent className="p-4 lg:p-6">
+              <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs lg:text-sm font-medium text-blue-600 dark:text-blue-400">Faculty Members</p>
-                    <p className="text-xl lg:text-3xl font-bold text-blue-700 dark:text-blue-300">{departmentStats.totalTeachers}</p>
+                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Faculty Members</p>
+                    <p className="text-3xl font-bold text-blue-700 dark:text-blue-300">{departmentStats.totalTeachers}</p>
                   </div>
-                  <Users className="h-8 w-8 lg:h-12 lg:w-12 text-blue-500" />
+                  <Users className="h-12 w-12 text-blue-500" />
                 </div>
               </CardContent>
             </Card>
 
             <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">
-              <CardContent className="p-4 lg:p-6">
+              <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs lg:text-sm font-medium text-green-600 dark:text-green-400">Avg Attendance</p>
-                    <p className="text-xl lg:text-3xl font-bold text-green-700 dark:text-green-300">{departmentStats.avgAttendance}</p>
+                    <p className="text-sm font-medium text-green-600 dark:text-green-400">Avg Attendance</p>
+                    <p className="text-3xl font-bold text-green-700 dark:text-green-300">{departmentStats.avgAttendance}</p>
                   </div>
-                  <Activity className="h-8 w-8 lg:h-12 lg:w-12 text-green-500" />
+                  <Activity className="h-12 w-12 text-green-500" />
                 </div>
               </CardContent>
             </Card>
 
             <Card className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800">
-              <CardContent className="p-4 lg:p-6">
+              <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs lg:text-sm font-medium text-purple-600 dark:text-purple-400">Placement Rate</p>
-                    <p className="text-xl lg:text-3xl font-bold text-purple-700 dark:text-purple-300">{departmentStats.placementRate}</p>
+                    <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Placement Rate</p>
+                    <p className="text-3xl font-bold text-purple-700 dark:text-purple-300">{departmentStats.placementRate}</p>
                   </div>
-                  <Target className="h-8 w-8 lg:h-12 lg:w-12 text-purple-500" />
+                  <Target className="h-12 w-12 text-purple-500" />
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-8">
+          <div className="grid lg:grid-cols-3 gap-8">
             {/* Left Column */}
-            <div className="xl:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-6">
               {/* Department Announcements */}
               <Card>
                 <CardHeader>
@@ -609,18 +722,18 @@ export default function DepartmentDashboard() {
             </div>
 
             {/* Right Column - AI Chat */}
-            <div className="order-first xl:order-last">
-              <Card className="h-[400px] lg:h-[600px] flex flex-col">
+            <div>
+              <Card className="h-[600px] flex flex-col">
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm lg:text-base">
-                    <Brain className="w-4 h-4 lg:w-5 lg:h-5 text-orange-500" />
+                  <CardTitle className="flex items-center gap-2">
+                    <Brain className="w-5 h-5 text-orange-500" />
                     AI {assistants.find(a => a.id === selectedAssistant)?.name}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col p-0">
                   {/* Assistant Selection */}
-                  <div className="px-4 lg:px-6 pb-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="px-6 pb-4">
+                    <div className="grid grid-cols-2 gap-2">
                       {assistants.map((assistant) => (
                         <Button
                           key={assistant.id}
@@ -641,7 +754,7 @@ export default function DepartmentDashboard() {
                   </div>
 
                   {/* Chat Messages */}
-                  <div className="flex-1 overflow-y-auto px-4 lg:px-6 space-y-4 scrollbar-none">
+                  <div className="flex-1 overflow-y-auto px-6 space-y-4">
                     {chatMessages.length === 0 && (
                       <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
                         <Brain className="w-12 h-12 mx-auto mb-4 text-gray-300" />
@@ -663,7 +776,7 @@ export default function DepartmentDashboard() {
                   </div>
 
                   {/* Chat Input */}
-                  <div className="p-4 lg:p-6 border-t border-gray-200 dark:border-gray-700">
+                  <div className="p-6 border-t border-gray-200 dark:border-gray-700">
                     <div className="flex space-x-2">
                       <input
                         type="text"
@@ -682,6 +795,8 @@ export default function DepartmentDashboard() {
               </Card>
             </div>
           </div>
+          </>
+          )}
         </div>
       </div>
     </div>

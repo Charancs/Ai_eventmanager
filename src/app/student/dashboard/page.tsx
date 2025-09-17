@@ -6,6 +6,8 @@ import { useTheme } from 'next-themes'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { notificationsApi, systemApi } from '@/lib/api'
+import DocumentSearch from '@/components/document-search'
 import { 
   Calendar, 
   Bell, 
@@ -67,6 +69,9 @@ export default function StudentDashboard() {
   const [message, setMessage] = useState('')
   const [chatMessages, setChatMessages] = useState<any[]>([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [activeTab, setActiveTab] = useState('overview')
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [systemStats, setSystemStats] = useState<any>({})
 
   useEffect(() => {
     setMounted(true)
@@ -75,6 +80,18 @@ export default function StudentDashboard() {
 
   const fetchDashboardData = async () => {
     try {
+      // Mock user ID (in real app, get from session)
+      const userId = 1;
+      
+      // Fetch notifications from backend
+      const notificationsData = await notificationsApi.getUserNotifications(userId, { limit: 5 });
+      setNotifications(notificationsData.slice(0, 5));
+
+      // Fetch system stats
+      const statsData = await systemApi.getStats();
+      setSystemStats(statsData);
+
+      // Keep existing API calls for reminders and announcements
       const remindersResponse = await fetch('/api/reminders')
       if (remindersResponse.ok) {
         const remindersData = await remindersResponse.json()
@@ -400,6 +417,85 @@ export default function StudentDashboard() {
             </div>
           </div>
 
+          {/* Tab Navigation */}
+          <div className="mb-8 border-b border-gray-200 dark:border-gray-700">
+            <nav className="flex space-x-8">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'overview'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Overview
+              </button>
+              <button
+                onClick={() => setActiveTab('search')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'search'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Search Documents
+              </button>
+              <button
+                onClick={() => setActiveTab('notifications')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'notifications'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Notifications
+              </button>
+            </nav>
+          </div>
+
+          {/* Conditional Content Based on Active Tab */}
+          {activeTab === 'search' && (
+            <div className="mb-8">
+              <DocumentSearch />
+            </div>
+          )}
+
+          {activeTab === 'notifications' && (
+            <div className="mb-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bell className="w-5 h-5 text-blue-500" />
+                    Your Notifications
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {notifications.length > 0 ? (
+                      notifications.map((notification: any, index: number) => (
+                        <div key={index} className="flex items-start justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900 dark:text-white">{notification.title}</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{notification.message}</p>
+                            <p className="text-xs text-gray-500">{new Date(notification.created_at).toLocaleDateString()}</p>
+                          </div>
+                          <Badge variant={notification.type === 'success' ? 'default' : 'secondary'}>
+                            {notification.type}
+                          </Badge>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 dark:text-gray-400 text-center py-4">No notifications</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {activeTab === 'overview' && (
+          <>
+
           {/* AI Chatbot Selection */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
@@ -612,6 +708,8 @@ export default function StudentDashboard() {
               </Card>
             )}
           </div>
+          </>
+          )}
         </div>
       </div>
     </div>
