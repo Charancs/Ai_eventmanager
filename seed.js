@@ -17,7 +17,9 @@ async function main() {
       email: 'admin@college.edu',
       name: 'System Administrator',
       password: hashedPassword,
-      role: 'ADMIN'
+      role: 'ADMIN',
+      department: 'admin',
+      employeeId: 'EMP003'
     }
   })
 
@@ -29,7 +31,7 @@ async function main() {
       email: 'cs.admin@college.edu',
       name: 'CS Department Head',
       password: hashedPassword,
-      role: 'DEPT_ADMIN',
+      role: 'DEPARTMENT_ADMIN',
       department: 'Computer Science',
       employeeId: 'EMP001'
     }

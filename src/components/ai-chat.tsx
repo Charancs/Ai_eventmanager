@@ -26,11 +26,11 @@ interface ChatMessage {
 
 interface AiChatProps {
   userRole: string
-  userId?: number
+  userId?: string
   assistantName?: string
 }
 
-export default function AiChat({ userRole, userId = 1, assistantName = "AI Assistant" }: AiChatProps) {
+export default function AiChat({ userRole, userId = '1', assistantName = "AI Assistant" }: AiChatProps) {
   const { data: session } = useSession()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = useState('')
@@ -60,7 +60,9 @@ export default function AiChat({ userRole, userId = 1, assistantName = "AI Assis
   const sendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return
 
-    const currentUserId = userId || session?.user?.id || 1
+    const currentUserId = userId?.toString() || session?.user?.id || '1'
+    const currentRole = userRole || session?.user?.role || 'admin'
+    const currentDepartment = session?.user?.department || (currentRole === 'admin' ? 'admin' : 'Computer Science')
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -82,7 +84,8 @@ export default function AiChat({ userRole, userId = 1, assistantName = "AI Assis
         body: JSON.stringify({
           query: userMessage.text,
           user_id: currentUserId,
-          role: userRole
+          role: currentRole,
+          department: currentDepartment
         }),
       })
 

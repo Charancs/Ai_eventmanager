@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { notificationsApi, systemApi, departmentsApi } from '@/lib/api'
-import DocumentSearch from '@/components/document-search'
 import DocumentUpload from '@/components/document-upload'
 import { 
   Users, 
@@ -228,8 +227,8 @@ export default function DepartmentDashboard() {
       {/* Floating Sidebar */}
       <div className={`fixed left-4 top-4 bottom-4 ${sidebarCollapsed ? 'w-20' : 'w-80'} bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl shadow-2xl rounded-2xl border border-white/20 dark:border-slate-700/50 z-50 transition-all duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className={`h-full flex flex-col ${sidebarCollapsed ? 'p-4' : 'p-6'}`}>
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          {/* Header - Fixed at top */}
+          <div className="flex items-center justify-between mb-6 flex-shrink-0">
             {!sidebarCollapsed && (
               <div className="flex items-center space-x-3">
                 <div className="w-12 h-12 bg-gradient-to-br from-orange-600 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -286,155 +285,160 @@ export default function DepartmentDashboard() {
             )}
           </div>
 
-          {/* Navigation */}
-          <nav className="space-y-2 mb-6">
-            <Button 
-              variant="default" 
-              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700`}
-              title={sidebarCollapsed ? "Dashboard" : ""}
-            >
-              <Home className="w-5 h-5" />
-              {!sidebarCollapsed && <span className="ml-3">Dashboard</span>}
-            </Button>
-            <Button 
-              variant="ghost" 
-              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-orange-50 dark:hover:bg-orange-900/20`}
-              title={sidebarCollapsed ? "Students" : ""}
-            >
-              <GraduationCap className="w-5 h-5" />
+          {/* Scrollable Content Area */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none">
+            <div className="space-y-6">
+              {/* Navigation */}
+              <nav className="space-y-2">
+                <Button 
+                  variant="default" 
+                  className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700`}
+                  title={sidebarCollapsed ? "Dashboard" : ""}
+                >
+                  <Home className="w-5 h-5" />
+                  {!sidebarCollapsed && <span className="ml-3">Dashboard</span>}
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-orange-50 dark:hover:bg-orange-900/20`}
+                  title={sidebarCollapsed ? "Students" : ""}
+                >
+                  <GraduationCap className="w-5 h-5" />
+                  {!sidebarCollapsed && (
+                    <>
+                      <span className="ml-3">Students</span>
+                      <Badge variant="secondary" className="ml-auto bg-orange-100 text-orange-600">{departmentStats.totalStudents}</Badge>
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-orange-50 dark:hover:bg-orange-900/20`}
+                  title={sidebarCollapsed ? "Faculty" : ""}
+                >
+                  <Users className="w-5 h-5" />
+                  {!sidebarCollapsed && (
+                    <>
+                      <span className="ml-3">Faculty</span>
+                      <Badge variant="secondary" className="ml-auto bg-blue-100 text-blue-600">{departmentStats.totalTeachers}</Badge>
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-orange-50 dark:hover:bg-orange-900/20`}
+                  title={sidebarCollapsed ? "Announcements" : ""}
+                >
+                  <Megaphone className="w-5 h-5" />
+                  {!sidebarCollapsed && (
+                    <>
+                      <span className="ml-3">Announcements</span>
+                      <Badge variant="secondary" className="ml-auto bg-purple-100 text-purple-600">{departmentStats.activeAnnouncements}</Badge>
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-orange-50 dark:hover:bg-orange-900/20`}
+                  title={sidebarCollapsed ? "Analytics" : ""}
+                >
+                  <BarChart className="w-5 h-5" />
+                  {!sidebarCollapsed && <span className="ml-3">Analytics</span>}
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-orange-50 dark:hover:bg-orange-900/20`}
+                  title={sidebarCollapsed ? "Placements" : ""}
+                >
+                  <Briefcase className="w-5 h-5" />
+                  {!sidebarCollapsed && <span className="ml-3">Placements</span>}
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-orange-50 dark:hover:bg-orange-900/20`}
+                  title={sidebarCollapsed ? "AI Assistant" : ""}
+                >
+                  <Brain className="w-5 h-5" />
+                  {!sidebarCollapsed && <span className="ml-3">AI Assistant</span>}
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-orange-50 dark:hover:bg-orange-900/20`}
+                  title={sidebarCollapsed ? "Settings" : ""}
+                >
+                  <Settings className="w-5 h-5" />
+                  {!sidebarCollapsed && <span className="ml-3">Settings</span>}
+                </Button>
+              </nav>
+
               {!sidebarCollapsed && (
                 <>
-                  <span className="ml-3">Students</span>
-                  <Badge variant="secondary" className="ml-auto bg-orange-100 text-orange-600">{departmentStats.totalStudents}</Badge>
+                  {/* Quick Stats */}
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                      <TrendingUp className="w-4 h-4 mr-2" />
+                      Department Overview
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Card className="p-3 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-orange-200 dark:border-orange-800">
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-orange-600 dark:text-orange-400">{departmentStats.totalStudents}</div>
+                          <div className="text-xs text-orange-500 dark:text-orange-400">Students</div>
+                        </div>
+                      </Card>
+                      <Card className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800">
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{departmentStats.totalTeachers}</div>
+                          <div className="text-xs text-blue-500 dark:text-blue-400">Faculty</div>
+                        </div>
+                      </Card>
+                      <Card className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-green-600 dark:text-green-400">{departmentStats.avgAttendance}</div>
+                          <div className="text-xs text-green-500 dark:text-green-400">Attendance</div>
+                        </div>
+                      </Card>
+                      <Card className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800">
+                        <div className="text-center">
+                          <div className="text-lg font-bold text-purple-600 dark:text-purple-400">{departmentStats.placementRate}</div>
+                          <div className="text-xs text-purple-500 dark:text-purple-400">Placements</div>
+                        </div>
+                      </Card>
+                    </div>
+                  </div>
+
+                  {/* AI Assistants */}
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                      <Brain className="w-4 h-4 mr-2" />
+                      Department Assistants
+                    </h3>
+                    <div className="space-y-2">
+                      {assistants.map((assistant) => (
+                        <Button
+                          key={assistant.id}
+                          variant={selectedAssistant === assistant.id ? "default" : "ghost"}
+                          size="sm"
+                          onClick={() => setSelectedAssistant(assistant.id)}
+                          className={`w-full justify-start text-xs ${
+                            selectedAssistant === assistant.id 
+                              ? `bg-gradient-to-r ${assistant.color} text-white` 
+                              : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                          }`}
+                        >
+                          <assistant.icon className="w-4 h-4 mr-2" />
+                          {assistant.name}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
                 </>
               )}
-            </Button>
-            <Button 
-              variant="ghost" 
-              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-orange-50 dark:hover:bg-orange-900/20`}
-              title={sidebarCollapsed ? "Faculty" : ""}
-            >
-              <Users className="w-5 h-5" />
-              {!sidebarCollapsed && (
-                <>
-                  <span className="ml-3">Faculty</span>
-                  <Badge variant="secondary" className="ml-auto bg-blue-100 text-blue-600">{departmentStats.totalTeachers}</Badge>
-                </>
-              )}
-            </Button>
-            <Button 
-              variant="ghost" 
-              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-orange-50 dark:hover:bg-orange-900/20`}
-              title={sidebarCollapsed ? "Announcements" : ""}
-            >
-              <Megaphone className="w-5 h-5" />
-              {!sidebarCollapsed && (
-                <>
-                  <span className="ml-3">Announcements</span>
-                  <Badge variant="secondary" className="ml-auto bg-purple-100 text-purple-600">{departmentStats.activeAnnouncements}</Badge>
-                </>
-              )}
-            </Button>
-            <Button 
-              variant="ghost" 
-              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-orange-50 dark:hover:bg-orange-900/20`}
-              title={sidebarCollapsed ? "Analytics" : ""}
-            >
-              <BarChart className="w-5 h-5" />
-              {!sidebarCollapsed && <span className="ml-3">Analytics</span>}
-            </Button>
-            <Button 
-              variant="ghost" 
-              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-orange-50 dark:hover:bg-orange-900/20`}
-              title={sidebarCollapsed ? "Placements" : ""}
-            >
-              <Briefcase className="w-5 h-5" />
-              {!sidebarCollapsed && <span className="ml-3">Placements</span>}
-            </Button>
-            <Button 
-              variant="ghost" 
-              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-orange-50 dark:hover:bg-orange-900/20`}
-              title={sidebarCollapsed ? "AI Assistant" : ""}
-            >
-              <Brain className="w-5 h-5" />
-              {!sidebarCollapsed && <span className="ml-3">AI Assistant</span>}
-            </Button>
-            <Button 
-              variant="ghost" 
-              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-orange-50 dark:hover:bg-orange-900/20`}
-              title={sidebarCollapsed ? "Settings" : ""}
-            >
-              <Settings className="w-5 h-5" />
-              {!sidebarCollapsed && <span className="ml-3">Settings</span>}
-            </Button>
-          </nav>
+            </div>
+          </div>
 
-          {!sidebarCollapsed && (
-            <>
-              {/* Quick Stats */}
-              <div className="mb-6">
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
-                  <TrendingUp className="w-4 h-4 mr-2" />
-                  Department Overview
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <Card className="p-3 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-orange-200 dark:border-orange-800">
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-orange-600 dark:text-orange-400">{departmentStats.totalStudents}</div>
-                      <div className="text-xs text-orange-500 dark:text-orange-400">Students</div>
-                    </div>
-                  </Card>
-                  <Card className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800">
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{departmentStats.totalTeachers}</div>
-                      <div className="text-xs text-blue-500 dark:text-blue-400">Faculty</div>
-                    </div>
-                  </Card>
-                  <Card className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-green-600 dark:text-green-400">{departmentStats.avgAttendance}</div>
-                      <div className="text-xs text-green-500 dark:text-green-400">Attendance</div>
-                    </div>
-                  </Card>
-                  <Card className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800">
-                    <div className="text-center">
-                      <div className="text-lg font-bold text-purple-600 dark:text-purple-400">{departmentStats.placementRate}</div>
-                      <div className="text-xs text-purple-500 dark:text-purple-400">Placements</div>
-                    </div>
-                  </Card>
-                </div>
-              </div>
-
-              {/* AI Assistants */}
-              <div className="mb-6">
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
-                  <Brain className="w-4 h-4 mr-2" />
-                  Department Assistants
-                </h3>
-                <div className="space-y-2">
-                  {assistants.map((assistant) => (
-                    <Button
-                      key={assistant.id}
-                      variant={selectedAssistant === assistant.id ? "default" : "ghost"}
-                      size="sm"
-                      onClick={() => setSelectedAssistant(assistant.id)}
-                      className={`w-full justify-start text-xs ${
-                        selectedAssistant === assistant.id 
-                          ? `bg-gradient-to-r ${assistant.color} text-white` 
-                          : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                      }`}
-                    >
-                      <assistant.icon className="w-4 h-4 mr-2" />
-                      {assistant.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Sign Out */}
-          <div className="mt-auto">
+          {/* Sign Out - Fixed at bottom */}
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
             <Button 
               variant="ghost" 
               className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20`}
@@ -513,7 +517,28 @@ export default function DepartmentDashboard() {
 
           {activeTab === 'search' && (
             <div className="mb-8">
-              <DocumentSearch />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Brain className="w-5 h-5 text-blue-500" />
+                    Document Search
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8">
+                    <Brain className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                      AI-Powered Document Search
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      Use the AI Assistant on the right to search through uploaded documents and get intelligent answers.
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Select "Department Assistant" and ask questions about your documents.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 

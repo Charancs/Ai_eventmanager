@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { notificationsApi, systemApi } from '@/lib/api'
-import DocumentSearch from '@/components/document-search'
+import AiChat from '@/components/ai-chat'
 import { 
   Calendar, 
   Bell, 
@@ -456,7 +456,28 @@ export default function StudentDashboard() {
           {/* Conditional Content Based on Active Tab */}
           {activeTab === 'search' && (
             <div className="mb-8">
-              <DocumentSearch />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Brain className="w-5 h-5 text-blue-500" />
+                    Document Search
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8">
+                    <Brain className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                      AI-Powered Document Search
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      Use the AI Assistant on the right to search through college documents and get answers to your questions.
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Ask questions about courses, events, announcements, and more.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
@@ -601,111 +622,18 @@ export default function StudentDashboard() {
               </Card>
             </div>
 
-            {/* Chat Interface */}
+            {/* AI Chat Interface */}
             {selectedChatbot && (
-              <Card className="shadow-xl border-0 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl">
-                <CardHeader className="pb-4 border-b border-gray-200/50 dark:border-gray-700/50">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center">
-                      <MessageSquare className="w-5 h-5 mr-2 text-blue-600" />
-                      AI Assistant
-                      <span className="ml-2 text-sm font-normal text-gray-600 dark:text-gray-400">
-                        {selectedChatbot === 'college' && '• College Support'}
-                        {selectedChatbot === 'department' && '• Department Support'}
-                        {selectedChatbot === 'student' && '• Personal Assistant'}
-                        {selectedChatbot === 'teacher' && '• Teacher Connect'}
-                      </span>
-                    </CardTitle>
-                    <Badge variant="outline" className="text-green-600 border-green-600 bg-green-50 dark:bg-green-900/20">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></div>
-                      Online
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0">
-                  {/* Chat Messages */}
-                  <div className="h-96 overflow-y-auto p-6 space-y-4">
-                    {chatMessages.length === 0 && (
-                      <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                          <Brain className="w-8 h-8 text-white" />
-                        </div>
-                        <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                          Hello {session?.user?.name?.split(' ')[0]}! 👋
-                        </h3>
-                        <p className="text-gray-600 dark:text-gray-400 mb-4">
-                          I'm your AI learning assistant. I can help you with:
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-md mx-auto text-sm">
-                          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-                            <CheckCircle2 className="w-4 h-4 text-blue-600 mb-1" />
-                            <p className="text-blue-700 dark:text-blue-400">Event notifications</p>
-                          </div>
-                          <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
-                            <CheckCircle2 className="w-4 h-4 text-green-600 mb-1" />
-                            <p className="text-green-700 dark:text-green-400">Assignment reminders</p>
-                          </div>
-                          <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg">
-                            <CheckCircle2 className="w-4 h-4 text-purple-600 mb-1" />
-                            <p className="text-purple-700 dark:text-purple-400">Exam schedules</p>
-                          </div>
-                          <div className="bg-orange-50 dark:bg-orange-900/20 p-3 rounded-lg">
-                            <CheckCircle2 className="w-4 h-4 text-orange-600 mb-1" />
-                            <p className="text-orange-700 dark:text-orange-400">Academic support</p>
-                          </div>
-                        </div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
-                          Type a message to get started! You can also use voice input or upload images.
-                        </p>
-                      </div>
-                    )}
-                    
-                    {chatMessages.map((msg) => (
-                      <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl ${
-                          msg.sender === 'user' 
-                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg' 
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600'
-                        }`}>
-                          <p className="text-sm">{msg.text}</p>
-                          <p className={`text-xs mt-2 ${msg.sender === 'user' ? 'text-blue-100' : 'text-gray-500'}`}>
-                            {msg.timestamp}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Chat Input */}
-                  <div className="border-t border-gray-200/50 dark:border-gray-700/50 p-4">
-                    <div className="flex items-center space-x-3">
-                      <Button variant="outline" size="sm" className="shrink-0">
-                        <Image className="w-4 h-4" />
-                      </Button>
-                      <Button variant="outline" size="sm" className="shrink-0">
-                        <Mic className="w-4 h-4" />
-                      </Button>
-                      <div className="flex-1 flex">
-                        <input
-                          type="text"
-                          value={message}
-                          onChange={(e) => setMessage(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                          placeholder="Type your message..."
-                          className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-l-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-                        />
-                        <Button 
-                          onClick={sendMessage} 
-                          className="rounded-l-none bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                          disabled={!message.trim()}
-                        >
-                          <Send className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <AiChat 
+                userRole="student"
+                userId={session?.user?.id || '1'}
+                assistantName={
+                  selectedChatbot === 'college' ? 'College Assistant' :
+                  selectedChatbot === 'department' ? 'Department Assistant' :
+                  selectedChatbot === 'student' ? 'Personal Assistant' :
+                  'Teacher Connect Assistant'
+                }
+              />
             )}
           </div>
           </>

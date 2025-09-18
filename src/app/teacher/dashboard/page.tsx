@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { notificationsApi, systemApi, documentsApi } from '@/lib/api'
-import DocumentSearch from '@/components/document-search'
 import DocumentUpload from '@/components/document-upload'
 import { 
   Users, 
@@ -498,7 +497,28 @@ export default function TeacherDashboard() {
 
           {activeTab === 'search' && (
             <div className="mb-8">
-              <DocumentSearch />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Brain className="w-5 h-5 text-blue-500" />
+                    Document Search
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-8">
+                    <Brain className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                      AI-Powered Document Search
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      Use the AI Assistant on the right to search through uploaded documents and get intelligent answers.
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Select "Teaching Assistant" and ask questions about your documents.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 

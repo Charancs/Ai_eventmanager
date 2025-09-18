@@ -212,6 +212,196 @@ async def get_documents_mock(limit: int = 5):
         "documents": []
     }
 
+# Notifications endpoints
+@app.get("/api/notifications/{user_id}")
+async def get_user_notifications(user_id: int, unread_only: bool = False, limit: int = 10, offset: int = 0):
+    """Get notifications for a user"""
+    # Mock notifications data for now
+    notifications = [
+        {
+            "id": 1,
+            "title": "New Event Created",
+            "message": "A new department event has been scheduled for next week",
+            "type": "event",
+            "read": False,
+            "created_at": "2025-09-18T10:00:00Z",
+            "user_id": user_id
+        },
+        {
+            "id": 2,
+            "title": "Document Uploaded",
+            "message": "New course material has been uploaded to the system",
+            "type": "document",
+            "read": True,
+            "created_at": "2025-09-17T15:30:00Z",
+            "user_id": user_id
+        },
+        {
+            "id": 3,
+            "title": "Meeting Reminder",
+            "message": "Faculty meeting scheduled for tomorrow at 2 PM",
+            "type": "reminder",
+            "read": False,
+            "created_at": "2025-09-16T09:00:00Z",
+            "user_id": user_id
+        }
+    ]
+    
+    if unread_only:
+        notifications = [n for n in notifications if not n["read"]]
+    
+    return notifications[offset:offset + limit]
+
+@app.patch("/api/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: int, user_id: int):
+    """Mark a notification as read"""
+    return {"success": True, "message": "Notification marked as read"}
+
+@app.patch("/api/notifications/users/{user_id}/read-all")
+async def mark_all_notifications_read(user_id: int):
+    """Mark all notifications as read for a user"""
+    return {"success": True, "message": "All notifications marked as read"}
+
+@app.get("/api/notifications/{user_id}/stats")
+async def get_notification_stats(user_id: int):
+    """Get notification statistics for a user"""
+    return {
+        "total": 3,
+        "unread": 2,
+        "read": 1
+    }
+
+# Departments endpoints
+@app.get("/api/departments")
+async def list_departments(active_only: bool = True):
+    """List all departments"""
+    departments = [
+        {
+            "id": 1,
+            "name": "Computer Science",
+            "code": "CSE",
+            "description": "Department of Computer Science and Engineering",
+            "head_name": "Dr. John Smith",
+            "active": True
+        },
+        {
+            "id": 2,
+            "name": "Information Technology",
+            "code": "IT",
+            "description": "Department of Information Technology",
+            "head_name": "Dr. Jane Doe",
+            "active": True
+        },
+        {
+            "id": 3,
+            "name": "Electronics",
+            "code": "ECE",
+            "description": "Department of Electronics and Communication",
+            "head_name": "Dr. Bob Wilson",
+            "active": True
+        },
+        {
+            "id": 4,
+            "name": "Mechanical",
+            "code": "MECH",
+            "description": "Department of Mechanical Engineering",
+            "head_name": "Dr. Alice Brown",
+            "active": True
+        },
+        {
+            "id": 5,
+            "name": "Civil",
+            "code": "CIVIL",
+            "description": "Department of Civil Engineering",
+            "head_name": "Dr. Charlie Davis",
+            "active": True
+        }
+    ]
+    
+    if active_only:
+        departments = [d for d in departments if d["active"]]
+    
+    return departments
+
+@app.get("/api/departments/{department_id}")
+async def get_department(department_id: int):
+    """Get department details"""
+    departments = {
+        1: {
+            "id": 1,
+            "name": "Computer Science",
+            "code": "CSE",
+            "description": "Department of Computer Science and Engineering",
+            "head_name": "Dr. John Smith",
+            "active": True,
+            "students": 245,
+            "faculty": 18
+        }
+    }
+    
+    if department_id not in departments:
+        raise HTTPException(status_code=404, detail="Department not found")
+    
+    return departments[department_id]
+
+@app.get("/api/departments/{department_id}/users")
+async def get_department_users(department_id: int, role: str = None, active_only: bool = True, limit: int = 10, offset: int = 0):
+    """Get users in a department"""
+    # Mock user data
+    users = [
+        {"id": 1, "name": "John Doe", "role": "student", "email": "john@example.com", "active": True},
+        {"id": 2, "name": "Jane Smith", "role": "teacher", "email": "jane@example.com", "active": True},
+    ]
+    
+    if role:
+        users = [u for u in users if u["role"] == role]
+    
+    if active_only:
+        users = [u for u in users if u["active"]]
+    
+    return users[offset:offset + limit]
+
+@app.get("/api/departments/{department_id}/events")
+async def get_department_events_api(department_id: int, upcoming_only: bool = True, limit: int = 10, offset: int = 0):
+    """Get events for a department"""
+    # Mock event data
+    events = [
+        {
+            "id": 1,
+            "title": "Faculty Meeting",
+            "description": "Monthly faculty meeting",
+            "date": "2025-09-25T14:00:00Z",
+            "location": "Conference Room A",
+            "type": "meeting"
+        },
+        {
+            "id": 2,
+            "title": "Student Orientation",
+            "description": "New student orientation program",
+            "date": "2025-09-30T09:00:00Z",
+            "location": "Main Auditorium",
+            "type": "orientation"
+        }
+    ]
+    
+    return events[offset:offset + limit]
+
+@app.get("/api/departments/{department_id}/documents")
+async def get_department_documents_api(department_id: int, limit: int = 10, offset: int = 0):
+    """Get documents for a department"""
+    # Mock document data
+    documents = [
+        {
+            "id": 1,
+            "title": "Course Syllabus",
+            "filename": "syllabus.pdf",
+            "upload_date": "2025-09-15T10:00:00Z",
+            "size": 1024000
+        }
+    ]
+    
+    return documents[offset:offset + limit]
+
 if __name__ == "__main__":
     # Check if required environment variables are set
     required_vars = ["OPENAI_API_KEY"]
@@ -222,7 +412,7 @@ if __name__ == "__main__":
         print("Please set these in your .env file")
     
     uvicorn.run(
-        app, 
+        "main:app", 
         host=os.getenv("HOST", "0.0.0.0"), 
         port=int(os.getenv("PORT", 8000)),
         reload=True

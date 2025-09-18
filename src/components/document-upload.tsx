@@ -1,19 +1,25 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Upload, FileText, CheckCircle, AlertCircle, X } from 'lucide-react'
+import { Upload, FileText, CheckCircle, AlertCircle, X, Plus, FolderPlus, BookOpen } from 'lucide-react'
+
+interface Subject {
+  name: string
+  file_count: number
+  path: string
+}
 
 interface DocumentUploadProps {
   userRole?: string
-  userId?: number
+  userId?: string
 }
 
-export default function DocumentUpload({ userRole = 'admin', userId = 1 }: DocumentUploadProps) {
+export default function DocumentUpload({ userRole = 'admin', userId = '1' }: DocumentUploadProps) {
   const { data: session } = useSession()
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
@@ -21,6 +27,84 @@ export default function DocumentUpload({ userRole = 'admin', userId = 1 }: Docum
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [statusMessage, setStatusMessage] = useState('')
+  // New: Store extracted event info from backend/agent
+  const [eventSummary, setEventSummary] = useState<null | { events_extracted: number, events_stored: number, storage_results: string[], messages: string[] }>(null)
+  const [uploadMode, setUploadMode] = useState<'general' | 'subject'>('general')
+  
+  // Subject-related state
+  const [subjects, setSubjects] = useState<Subject[]>([])
+  const [selectedSubject, setSelectedSubject] = useState<string>('')
+  const [newSubjectName, setNewSubjectName] = useState('')
+  const [showNewSubjectInput, setShowNewSubjectInput] = useState(false)
+  const [creatingSubject, setCreatingSubject] = useState(false)
+  const [loadingSubjects, setLoadingSubjects] = useState(false)
+
+  const currentDepartment = session?.user?.department || (userRole === 'admin' ? 'admin' : 'Computer Science')
+
+  // Load subjects when component mounts or department changes
+  useEffect(() => {
+    if (uploadMode === 'subject') {
+      loadSubjects()
+    }
+  }, [uploadMode, currentDepartment])
+
+  const loadSubjects = async () => {
+    setLoadingSubjects(true)
+    try {
+      const response = await fetch(`http://localhost:8000/api/subjects/${encodeURIComponent(currentDepartment)}`)
+      if (response.ok) {
+        const result = await response.json()
+        setSubjects(result.subjects || [])
+      } else {
+        console.error('Failed to load subjects')
+      }
+    } catch (error) {
+      console.error('Error loading subjects:', error)
+    } finally {
+      setLoadingSubjects(false)
+    }
+  }
+
+  const createNewSubject = async () => {
+    if (!newSubjectName.trim()) {
+      setUploadStatus('error')
+      setStatusMessage('Please enter a subject name')
+      return
+    }
+
+    setCreatingSubject(true)
+    try {
+      const response = await fetch('http://localhost:8000/api/subjects/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subject_name: newSubjectName.trim(),
+          department: currentDepartment
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setSubjects(prev => [...prev, result.subject])
+        setSelectedSubject(newSubjectName.trim())
+        setNewSubjectName('')
+        setShowNewSubjectInput(false)
+        setUploadStatus('success')
+        setStatusMessage(`Subject "${newSubjectName.trim()}" created successfully!`)
+      } else {
+        const error = await response.json()
+        setUploadStatus('error')
+        setStatusMessage(error.detail || 'Failed to create subject')
+      }
+    } catch (error) {
+      setUploadStatus('error')
+      setStatusMessage('Error creating subject')
+    } finally {
+      setCreatingSubject(false)
+    }
+  }
 
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0]
@@ -54,7 +138,24 @@ export default function DocumentUpload({ userRole = 'admin', userId = 1 }: Docum
       return
     }
 
-    const currentUserId = userId || session?.user?.id || 1
+    // Validate subject selection for subject mode
+    if (uploadMode === 'subject' && !selectedSubject) {
+      setUploadStatus('error')
+      setStatusMessage('Please select a subject or create a new one')
+      return
+    }
+
+    // Check if user is authenticated
+    if (!session && !userId) {
+      setUploadStatus('error')
+      setStatusMessage('Please log in to upload documents')
+      return
+    }
+
+    const currentUserId = userId?.toString() || session?.user?.id || '1'
+    const currentRole = userRole || session?.user?.role || 'admin'
+
+    console.log('Upload data:', { currentUserId, currentRole, currentDepartment, uploadMode, selectedSubject }) // Debug log
 
     setUploading(true)
     setUploadProgress(0)
@@ -63,15 +164,26 @@ export default function DocumentUpload({ userRole = 'admin', userId = 1 }: Docum
       const formData = new FormData()
       formData.append('file', file)
       formData.append('title', title.trim())
-      formData.append('user_id', currentUserId.toString())
-      formData.append('role', userRole)
+      formData.append('user_id', currentUserId)
+      formData.append('role', currentRole)
+      formData.append('department', currentDepartment)
+
+      // Add subject for subject-specific uploads
+      if (uploadMode === 'subject' && selectedSubject) {
+        formData.append('subject', selectedSubject)
+      }
 
       // Simulate progress for better UX
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => Math.min(prev + 10, 90))
       }, 200)
 
-      const response = await fetch('http://localhost:8000/api/documents/upload', {
+      // Choose endpoint based on upload mode
+      const endpoint = uploadMode === 'subject' 
+        ? 'http://localhost:8000/api/documents/upload-subject'
+        : 'http://localhost:8000/api/documents/upload'
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         body: formData,
       })
@@ -83,8 +195,27 @@ export default function DocumentUpload({ userRole = 'admin', userId = 1 }: Docum
 
       if (response.ok && result.success) {
         setUploadStatus('success')
-        setStatusMessage(`Document processed successfully! Created ${result.data.chunk_count} chunks for search.`)
-        
+        const baseMessage = `Document processed successfully! Created ${result.data.chunk_count} chunks for search.`
+        const subjectMessage = uploadMode === 'subject' ? ` Uploaded to ${selectedSubject} subject.` : ''
+        setStatusMessage(baseMessage + subjectMessage)
+
+        // New: Show event extraction summary if present
+        if (result.data && result.data.event_agent_result) {
+          setEventSummary({
+            events_extracted: result.data.event_agent_result.events_extracted,
+            events_stored: result.data.event_agent_result.events_stored,
+            storage_results: result.data.event_agent_result.storage_results,
+            messages: result.data.event_agent_result.messages,
+          })
+        } else {
+          setEventSummary(null)
+        }
+
+        // Refresh subjects list if in subject mode
+        if (uploadMode === 'subject') {
+          loadSubjects()
+        }
+
         // Reset form after delay
         setTimeout(() => {
           setFile(null)
@@ -92,10 +223,11 @@ export default function DocumentUpload({ userRole = 'admin', userId = 1 }: Docum
           setUploadStatus('idle')
           setStatusMessage('')
           setUploadProgress(0)
+          setEventSummary(null)
           // Reset file input
           const fileInput = document.getElementById('file-upload') as HTMLInputElement
           if (fileInput) fileInput.value = ''
-        }, 3000)
+        }, 5000)
       } else {
         throw new Error(result.detail || 'Upload failed')
       }
@@ -171,16 +303,113 @@ export default function DocumentUpload({ userRole = 'admin', userId = 1 }: Docum
 
         {/* Title Input */}
         {file && (
-          <div>
-            <Label htmlFor="title">Document Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter a descriptive title for this document"
-              className="mt-1"
-            />
-          </div>
+          <>
+            <div>
+              <Label htmlFor="title">Document Title</Label>
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Enter a descriptive title for this document"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Upload Mode Selection */}
+            <div>
+              <Label>Upload Type</Label>
+              <div className="flex gap-4 mt-2">
+                <Button
+                  type="button"
+                  variant={uploadMode === 'general' ? 'default' : 'outline'}
+                  onClick={() => setUploadMode('general')}
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  General Upload
+                </Button>
+                <Button
+                  type="button"
+                  variant={uploadMode === 'subject' ? 'default' : 'outline'}
+                  onClick={() => setUploadMode('subject')}
+                  className="flex items-center gap-2"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  Subject Specific
+                </Button>
+              </div>
+            </div>
+
+            {/* Subject Selection for Subject Mode */}
+            {uploadMode === 'subject' && (
+              <div className="space-y-4">
+                <div>
+                  <Label>Select Subject</Label>
+                  <div className="flex gap-2 mt-2">
+                    <select
+                      value={selectedSubject}
+                      onChange={(e) => setSelectedSubject(e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      disabled={loadingSubjects}
+                    >
+                      <option value="">
+                        {loadingSubjects ? 'Loading subjects...' : 'Select a subject'}
+                      </option>
+                      {subjects.map((subject) => (
+                        <option key={subject.name} value={subject.name}>
+                          {subject.name} ({subject.file_count} files)
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowNewSubjectInput(!showNewSubjectInput)}
+                      className="px-3"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* New Subject Creation */}
+                {showNewSubjectInput && (
+                  <div className="flex gap-2">
+                    <Input
+                      value={newSubjectName}
+                      onChange={(e) => setNewSubjectName(e.target.value)}
+                      placeholder="Enter new subject name"
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      onClick={createNewSubject}
+                      disabled={creatingSubject || !newSubjectName.trim()}
+                      className="flex items-center gap-2"
+                    >
+                      <FolderPlus className="w-4 h-4" />
+                      Create
+                    </Button>
+                  </div>
+                )}
+
+                {/* Subject Info */}
+                {selectedSubject && (
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      <strong>Department:</strong> {currentDepartment}
+                    </p>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      <strong>Subject:</strong> {selectedSubject}
+                    </p>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      <strong>Files in subject:</strong> {subjects.find(s => s.name === selectedSubject)?.file_count || 0}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
 
         {/* Upload Progress */}
@@ -219,6 +448,32 @@ export default function DocumentUpload({ userRole = 'admin', userId = 1 }: Docum
         >
           {uploading ? 'Processing...' : 'Upload & Process Document'}
         </Button>
+
+        {/* Event Extraction Summary (if available) */}
+        {eventSummary && (
+          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+            <div className="font-semibold mb-2 text-blue-800 dark:text-blue-200">Event Extraction Results</div>
+            <div className="text-sm text-blue-900 dark:text-blue-100 mb-1">Events Extracted: <strong>{eventSummary.events_extracted}</strong></div>
+            <div className="text-sm text-blue-900 dark:text-blue-100 mb-1">Events Stored: <strong>{eventSummary.events_stored}</strong></div>
+            {eventSummary.storage_results.length > 0 && (
+              <ul className="list-disc ml-6 text-xs text-blue-900 dark:text-blue-100">
+                {eventSummary.storage_results.map((msg, idx) => (
+                  <li key={idx}>{msg}</li>
+                ))}
+              </ul>
+            )}
+            {eventSummary.messages.length > 0 && (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-xs text-blue-700 dark:text-blue-300">Agent Messages</summary>
+                <ul className="list-disc ml-6 text-xs">
+                  {eventSummary.messages.map((msg, idx) => (
+                    <li key={idx}>{msg}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        )}
 
         {/* Info */}
         <div className="text-sm text-gray-500 space-y-1">

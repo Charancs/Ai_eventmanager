@@ -11,24 +11,16 @@ cryptography
 passlib
 python-jose
 bcrypt
-chromadb
-langchain
-langchain-community
 openai
 pypdf2
 python-docx
 pillow
 numpy
-pandas
-scikit-learn
-transformers
-torch
-sentence-transformers
 faiss-cpu
 requests
+# AutoGen dependencies
+autogen-agentchat
+autogen-ext[openai]
 aiofiles
-jinja2
-python-magic
 pathlib
 typing-extensions
-docx2txt

@@ -8,10 +8,7 @@ from datetime import datetime
 
 import faiss
 import numpy as np
-from sentence_transformers import SentenceTransformer
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.document_loaders import PyPDFLoader, Docx2txtLoader, TextLoader
-import openai
+from openai import OpenAI
 from docx import Document as DocxDocument
 import PyPDF2
 
@@ -19,23 +16,29 @@ logger = logging.getLogger(__name__)
 
 class VectorDatabase:
     def __init__(self):
-        """Initialize the Vector Database with embedding model and text splitter"""
-        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
-            length_function=len,
-        )
+        """Initialize the Vector Database with OpenAI embedding and simple text splitter"""
+        # Initialize OpenAI client
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY environment variable is required")
+        
+        self.openai_client = OpenAI(api_key=api_key)
+        
         self.base_storage_path = Path("storage")
         self.base_storage_path.mkdir(exist_ok=True)
         
-        # Set OpenAI API key from environment
-        openai.api_key = os.getenv("OPENAI_API_KEY")
+        # Simple text splitter parameters
+        self.chunk_size = 1000
+        self.chunk_overlap = 200
 
-    def _get_user_storage_path(self, user_id: int, role: str) -> Path:
-        """Get storage path for specific user based on role"""
-        storage_path = self.base_storage_path / f"{role}_{user_id}"
-        storage_path.mkdir(exist_ok=True)
+    def _get_user_storage_path(self, user_id: str, role: str, department: str) -> Path:
+        """Get storage path for department - all users in same department share the same folder"""
+        # Create folder structure: storage/department/
+        # For admin: storage/admin/
+        # For others: storage/ComputerScience/
+        safe_department = department.replace(" ", "").replace("/", "_").replace("\\", "_")
+        storage_path = self.base_storage_path / safe_department
+        storage_path.mkdir(parents=True, exist_ok=True)
         return storage_path
 
     def _extract_text_from_pdf(self, file_path: str) -> str:
@@ -89,13 +92,70 @@ class VectorDatabase:
             logger.error(f"Error extracting text from document {file_path}: {str(e)}")
             raise
 
+    def _split_text(self, text: str) -> List[str]:
+        """Simple text splitter that splits text into chunks"""
+        if not text.strip():
+            return []
+        
+        # Split by sentences and combine into chunks
+        sentences = text.replace('\n', ' ').split('. ')
+        chunks = []
+        current_chunk = ""
+        
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+                
+            # If adding this sentence would exceed chunk size, save current chunk
+            if len(current_chunk) + len(sentence) + 2 > self.chunk_size:
+                if current_chunk:
+                    chunks.append(current_chunk.strip())
+                current_chunk = sentence
+            else:
+                if current_chunk:
+                    current_chunk += ". " + sentence
+                else:
+                    current_chunk = sentence
+        
+        # Add the last chunk
+        if current_chunk:
+            chunks.append(current_chunk.strip())
+        
+        # Handle overlap by duplicating some content at chunk boundaries
+        if len(chunks) > 1:
+            overlapped_chunks = []
+            for i, chunk in enumerate(chunks):
+                if i > 0:
+                    # Add some content from previous chunk for overlap
+                    prev_chunk = chunks[i-1]
+                    overlap_text = prev_chunk[-self.chunk_overlap:] if len(prev_chunk) > self.chunk_overlap else prev_chunk
+                    chunk = overlap_text + " " + chunk
+                overlapped_chunks.append(chunk)
+            chunks = overlapped_chunks
+        
+        return [chunk for chunk in chunks if len(chunk.strip()) > 50]  # Filter out very short chunks
+
     def create_embeddings(self, chunks: List[str]) -> np.ndarray:
-        """Create embeddings for text chunks using sentence-transformers"""
+        """Create embeddings for text chunks using OpenAI's cheapest embedding model"""
         try:
-            embeddings = self.embedding_model.encode(chunks, show_progress_bar=True)
-            return embeddings
+            if not chunks:
+                return np.array([])
+            
+            # Use OpenAI's text-embedding-ada-002 model (cheapest embedding model)
+            response = self.openai_client.embeddings.create(
+                model="text-embedding-ada-002",
+                input=chunks
+            )
+            
+            # Extract embeddings from response
+            embeddings = []
+            for item in response.data:
+                embeddings.append(item.embedding)
+            
+            return np.array(embeddings)
         except Exception as e:
-            logger.error(f"Error creating embeddings: {str(e)}")
+            logger.error(f"Error creating embeddings with OpenAI: {str(e)}")
             raise
 
     def save_vector_database(self, embeddings: np.ndarray, chunks: List[str], 
@@ -138,14 +198,19 @@ class VectorDatabase:
             logger.error(f"Error saving vector database: {str(e)}")
             raise
 
-    def process_document(self, file_path: str, user_id: int, role: str, 
-                        filename: str, title: str) -> Dict[str, Any]:
+    def process_document(self, file_path: str, user_id: str, role: str, department: str,
+                        filename: str, title: str, subject: str = None) -> Dict[str, Any]:
         """Process uploaded document and create vector database"""
         try:
             document_id = str(uuid.uuid4())
-            storage_path = self._get_user_storage_path(user_id, role)
+            storage_path = self._get_user_storage_path(user_id, role, department)
             
-            # Copy file to user storage
+            # If subject is provided, use subject-specific storage
+            if subject:
+                storage_path = storage_path / subject
+                storage_path.mkdir(parents=True, exist_ok=True)
+            
+            # Copy file to appropriate storage location
             user_file_path = storage_path / f"{document_id}_{filename}"
             import shutil
             shutil.copy2(file_path, user_file_path)
@@ -156,8 +221,8 @@ class VectorDatabase:
             if not full_text.strip():
                 raise ValueError("No text content found in the document")
             
-            # Split into chunks
-            chunks = self.text_splitter.split_text(full_text)
+            # Split into chunks using our simple text splitter
+            chunks = self._split_text(full_text)
             
             if not chunks:
                 raise ValueError("No chunks created from the document")
@@ -185,13 +250,17 @@ class VectorDatabase:
             logger.error(f"Error processing document: {str(e)}")
             raise
 
-    def query_documents(self, query: str, user_id: int, role: str, top_k: int = 5) -> List[Dict[str, Any]]:
+    def query_documents(self, query: str, user_id: str, role: str, department: str, top_k: int = 5) -> List[Dict[str, Any]]:
         """Query vector database and return relevant chunks"""
         try:
-            storage_path = self._get_user_storage_path(user_id, role)
+            storage_path = self._get_user_storage_path(user_id, role, department)
             
-            # Create query embedding
-            query_embedding = self.embedding_model.encode([query])
+            # Create query embedding using OpenAI
+            query_response = self.openai_client.embeddings.create(
+                model="text-embedding-ada-002",
+                input=[query]
+            )
+            query_embedding = np.array([query_response.data[0].embedding])
             
             all_results = []
             
@@ -273,7 +342,7 @@ Instructions:
 
 Answer:"""
             
-            response = openai.ChatCompletion.create(
+            response = self.openai_client.chat.completions.create(
                 model="gpt-3.5-turbo",  # Cheapest OpenAI model
                 messages=[
                     {
@@ -311,7 +380,7 @@ Answer:"""
                 "source_documents": []
             }
 
-    def get_user_documents(self, user_id: int, role: str) -> List[Dict[str, Any]]:
+    def get_user_documents(self, user_id: str, role: str) -> List[Dict[str, Any]]:
         """Get list of all documents for a user"""
         try:
             storage_path = self._get_user_storage_path(user_id, role)
@@ -334,7 +403,7 @@ Answer:"""
             logger.error(f"Error getting user documents: {str(e)}")
             return []
 
-    def delete_document(self, document_id: str, user_id: int, role: str) -> bool:
+    def delete_document(self, document_id: str, user_id: str, role: str) -> bool:
         """Delete a document and all its associated files"""
         try:
             storage_path = self._get_user_storage_path(user_id, role)
