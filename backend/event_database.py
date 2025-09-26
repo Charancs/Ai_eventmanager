@@ -44,7 +44,7 @@ class EventDatabase:
             cursor.execute(f"CREATE DATABASE IF NOT EXISTS {database_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
             cursor.execute(f"USE {database_name}")
             
-            # Create admin events table
+            # Create admin events table (for college-wide events)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS admin_events (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -54,21 +54,11 @@ class EventDatabase:
                     related_information TEXT,
                     event_time TIME NULL,
                     location VARCHAR(500) NULL,
+                    document_path VARCHAR(1000) NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     INDEX idx_document_id (document_id),
                     INDEX idx_event_date (event_date)
-                ) ENGINE=InnoDB
-            ''')
-            
-            # Create department tables metadata
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS department_tables (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    department VARCHAR(255) NOT NULL UNIQUE,
-                    table_name VARCHAR(255) NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_department (department)
                 ) ENGINE=InnoDB
             ''')
             
@@ -79,24 +69,16 @@ class EventDatabase:
             print(f"Error initializing database: {e}")
     
     def create_department_table(self, department: str) -> str:
-        """Create a department-specific events table"""
+        """Create a department-specific events table with same structure as admin_events"""
         # Sanitize department name for table name
         safe_dept_name = department.replace(" ", "_").replace("-", "_").lower()
-        table_name = f"events_{safe_dept_name}"
+        table_name = f"{safe_dept_name}_events"
         
         conn = self.get_connection()
         cursor = conn.cursor()
         
         try:
-            # Check if table already exists
-            cursor.execute('SELECT table_name FROM department_tables WHERE department = %s', (department,))
-            result = cursor.fetchone()
-            
-            if result:
-                conn.close()
-                return result[0]
-            
-            # Create the department-specific table
+            # Create the department-specific table with same structure as admin_events
             cursor.execute(f'''
                 CREATE TABLE IF NOT EXISTS {table_name} (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -106,21 +88,13 @@ class EventDatabase:
                     related_information TEXT,
                     event_time TIME NULL,
                     location VARCHAR(500) NULL,
-                    user_role ENUM('department_admin', 'teacher', 'student') NOT NULL,
+                    document_path VARCHAR(1000) NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     INDEX idx_document_id (document_id),
-                    INDEX idx_event_date (event_date),
-                    INDEX idx_user_role (user_role)
+                    INDEX idx_event_date (event_date)
                 ) ENGINE=InnoDB
             ''')
-            
-            # Record the table creation
-            cursor.execute('''
-                INSERT INTO department_tables (department, table_name)
-                VALUES (%s, %s)
-                ON DUPLICATE KEY UPDATE table_name = VALUES(table_name)
-            ''', (department, table_name))
             
             conn.commit()
             return table_name
@@ -139,15 +113,16 @@ class EventDatabase:
         try:
             cursor.execute('''
                 INSERT INTO admin_events (
-                    document_id, document_title, event_date, related_information, event_time, location
-                ) VALUES (%s, %s, %s, %s, %s, %s)
+                    document_id, document_title, event_date, related_information, event_time, location, document_path
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
             ''', (
                 event_data.get('document_id'),
                 event_data.get('document_title'),
                 event_data.get('event_date'),
                 event_data.get('related_information'),
                 event_data.get('event_time'),
-                event_data.get('location')
+                event_data.get('location'),
+                event_data.get('document_path')
             ))
             
             event_id = cursor.lastrowid
@@ -170,7 +145,7 @@ class EventDatabase:
         try:
             cursor.execute(f'''
                 INSERT INTO {table_name} (
-                    document_id, document_title, event_date, related_information, event_time, location, user_role
+                    document_id, document_title, event_date, related_information, event_time, location, document_path
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s)
             ''', (
                 event_data.get('document_id'),
@@ -179,7 +154,7 @@ class EventDatabase:
                 event_data.get('related_information'),
                 event_data.get('event_time'),
                 event_data.get('location'),
-                event_data.get('user_role')
+                event_data.get('document_path')
             ))
             
             event_id = cursor.lastrowid
@@ -231,14 +206,14 @@ class EventDatabase:
         cursor = conn.cursor(dictionary=True)
         
         try:
-            # Check if department table exists
-            cursor.execute('SELECT table_name FROM department_tables WHERE department = %s', (department,))
-            result = cursor.fetchone()
+            # Generate table name directly from department name
+            safe_dept_name = department.replace(" ", "_").replace("-", "_").lower()
+            table_name = f"{safe_dept_name}_events"
             
-            if not result:
-                return []
-            
-            table_name = result['table_name']
+            # Check if table exists by trying to query it
+            cursor.execute(f"SHOW TABLES LIKE '{table_name}'")
+            if not cursor.fetchone():
+                return []  # Table doesn't exist yet
             
             cursor.execute(f'''
                 SELECT * FROM {table_name} 
@@ -268,18 +243,116 @@ class EventDatabase:
             conn.close()
     
     def get_all_departments(self) -> List[str]:
-        """Get list of all departments with events"""
+        """Get list of all departments by scanning for department event tables"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
         try:
-            cursor.execute('SELECT department FROM department_tables ORDER BY department')
-            departments = [row[0] for row in cursor.fetchall()]
-            return departments
+            # Get all tables that match the department pattern
+            cursor.execute("SHOW TABLES LIKE '%_events'")
+            tables = cursor.fetchall()
+            
+            departments = []
+            for table in tables:
+                table_name = table[0]
+                # Skip admin_events table
+                if table_name == 'admin_events':
+                    continue
+                # Extract department name from table name (remove _events suffix)
+                dept_name = table_name.replace('_events', '').replace('_', ' ').title()
+                departments.append(dept_name)
+            
+            return sorted(departments)
             
         except mysql.connector.Error as e:
             print(f"Error getting departments: {e}")
             return []
+        finally:
+            conn.close()
+    
+    def get_upcoming_events(self, days_ahead: int = 2) -> Dict[str, List[Dict[str, Any]]]:
+        """Get upcoming events from today to specified days ahead for notifications"""
+        from datetime import datetime, timedelta
+        
+        today = datetime.now().date()
+        end_date = today + timedelta(days=days_ahead)
+        
+        conn = self.get_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        result = {
+            'college_events': [],
+            'department_events': {}
+        }
+        
+        try:
+            # Get college events (admin events)
+            cursor.execute('''
+                SELECT id, document_id, document_title, event_date, event_time, location, 
+                       related_information, document_path, created_at
+                FROM admin_events 
+                WHERE event_date >= %s AND event_date <= %s
+                ORDER BY event_date ASC, event_time ASC
+            ''', (today, end_date))
+            
+            college_events = cursor.fetchall()
+            
+            # Convert datetime objects to strings for JSON serialization
+            for event in college_events:
+                if event.get('event_date'):
+                    event['event_date'] = event['event_date'].strftime('%Y-%m-%d')
+                if event.get('event_time'):
+                    event['event_time'] = str(event['event_time'])
+                if event.get('created_at'):
+                    event['created_at'] = event['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+            
+            result['college_events'] = college_events
+            
+            # Get department events from all department tables
+            # Create a fresh cursor without dictionary mode for SHOW TABLES
+            tables_cursor = conn.cursor()  # Regular cursor, not dictionary mode
+            tables_cursor.execute("SHOW TABLES LIKE '%_events'")
+            tables = tables_cursor.fetchall()
+            tables_cursor.close()
+            
+            for table_row in tables:
+                # For regular cursor, results are tuples
+                table_name = table_row[0]  # Get first element from tuple
+                    
+                # Skip admin_events table as it's handled above
+                if table_name == 'admin_events':
+                    continue
+                
+                # Extract department name from table name
+                department = table_name.replace('_events', '').replace('_', ' ').title()
+                
+                cursor.execute(f'''
+                    SELECT id, document_id, document_title, event_date, event_time, location, 
+                           related_information, document_path, created_at
+                    FROM {table_name}
+                    WHERE event_date >= %s AND event_date <= %s
+                    ORDER BY event_date ASC, event_time ASC
+                ''', (today, end_date))
+                
+                dept_events = cursor.fetchall()
+                
+                # Convert datetime objects to strings
+                for event in dept_events:
+                    if event.get('event_date'):
+                        event['event_date'] = event['event_date'].strftime('%Y-%m-%d')
+                    if event.get('event_time'):
+                        event['event_time'] = str(event['event_time'])
+                    if event.get('created_at'):
+                        event['created_at'] = event['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+                
+                if dept_events:
+                    result['department_events'][department] = dept_events
+            
+            return result
+            
+        except mysql.connector.Error as e:
+            print(f"Error getting upcoming events: {e}")
+            return result
         finally:
             conn.close()
 

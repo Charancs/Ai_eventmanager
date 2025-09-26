@@ -11,14 +11,21 @@
 - Use root user or create a new user with database creation privileges
 
 ### 2. Create Database and Tables
-- Open the `mysql_setup.sql` file in MySQL Workbench
+- **For New Installation**: Open the `mysql_setup.sql` file in MySQL Workbench
+- **For Upgrading Existing Setup**: Open the `mysql_migration.sql` file instead
 - Execute the entire script to create:
   - Database: `ai_eventmanager_events`
-  - Admin events table: `admin_events`
-  - Department metadata table: `department_tables`
-  - Example department table: `events_computer_science`
+  - College events table: `admin_events`
+  - Department-specific event tables: `computer_science_events`, `mechanical_events`, etc.
 
-### 3. Configure Environment Variables
+### 3. New Simplified Structure
+The database now uses a simplified structure:
+- **College Events**: Stored in `admin_events` table
+- **Department Events**: Each department has its own table (e.g., `computer_science_events`, `mechanical_events`)
+- **No metadata table**: Removed `department_tables` - departments are identified by table names
+- **Unified structure**: All event tables have the same schema (same as admin_events)
+
+### 4. Configure Environment Variables
 - Copy `.env.example` to `.env`
 - Update the MySQL connection settings:
   ```

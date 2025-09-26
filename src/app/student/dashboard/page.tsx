@@ -4,57 +4,34 @@ import { useState, useEffect } from 'react'
 import { useSession, signOut } from 'next-auth/react'
 import { useTheme } from 'next-themes'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { notificationsApi, systemApi } from '@/lib/api'
-import AiChat from '@/components/ai-chat'
+import CollegeEventView from '@/components/college-event-view'
+import DepartmentEventView from '@/components/department-event-view'
+import AIAssistantHub from '@/components/ai-assistant-hub'
 import { 
-  Calendar, 
-  Bell, 
-  BookOpen, 
-  GraduationCap, 
+  Users, 
+  Building, 
   LogOut, 
-  MessageSquare,
-  Star,
   Brain,
-  CheckCircle2,
-  AlertCircle,
-  Mic,
-  Image,
-  Send,
-  School,
-  UserCheck,
-  Megaphone,
   Sun,
   Moon,
   Menu,
   X,
-  ChevronDown,
-  Users,
   Home,
-  Settings,
-  User,
-  Clock,
-  TrendingUp,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  MessageSquare,
+  School,
+  GraduationCap,
+  User
 } from 'lucide-react'
 
-interface Reminder {
-  id: string
-  title: string
-  dueDate: string
-  type: string
-  description?: string
-}
-
-interface Announcement {
-  id: string
-  title: string
-  content: string
-  type: string
-  createdAt: string
-  priority: string
+interface StudentStats {
+  totalStudents: number
+  totalTeachers: number
+  totalClasses: number
+  totalEvents: number
+  systemHealth: string
 }
 
 export default function StudentDashboard() {
@@ -62,16 +39,16 @@ export default function StudentDashboard() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [upcomingReminders, setUpcomingReminders] = useState<Reminder[]>([])
-  const [announcements, setAnnouncements] = useState<Announcement[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedChatbot, setSelectedChatbot] = useState<string | null>(null)
-  const [message, setMessage] = useState('')
-  const [chatMessages, setChatMessages] = useState<any[]>([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [activeTab, setActiveTab] = useState('overview')
-  const [notifications, setNotifications] = useState<any[]>([])
-  const [systemStats, setSystemStats] = useState<any>({})
+  const [studentStats, setStudentStats] = useState<StudentStats>({
+    totalStudents: 0,
+    totalTeachers: 0,
+    totalClasses: 0,
+    totalEvents: 0,
+    systemHealth: 'Good'
+  })
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('dashboard')
 
   useEffect(() => {
     setMounted(true)
@@ -80,104 +57,56 @@ export default function StudentDashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      // Mock user ID (in real app, get from session)
-      const userId = 1;
-      
-      // Fetch notifications from backend
-      const notificationsData = await notificationsApi.getUserNotifications(userId, { limit: 5 });
-      setNotifications(notificationsData.slice(0, 5));
-
-      // Fetch system stats
-      const statsData = await systemApi.getStats();
-      setSystemStats(statsData);
-
-      // Keep existing API calls for reminders and announcements
-      const remindersResponse = await fetch('/api/reminders')
-      if (remindersResponse.ok) {
-        const remindersData = await remindersResponse.json()
-        setUpcomingReminders(remindersData.data?.slice(0, 5) || [])
-      }
-
-      const announcementsResponse = await fetch('/api/announcements')
-      if (announcementsResponse.ok) {
-        const announcementsData = await announcementsResponse.json()
-        setAnnouncements(announcementsData.data?.slice(0, 5) || [])
+      // Use backend API for basic system stats
+      const statsResponse = await fetch('http://localhost:8000/api/stats')
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json()
+        setStudentStats({
+          totalStudents: statsData.users?.students || 420,
+          totalTeachers: statsData.users?.teachers || 28,
+          totalClasses: 15,
+          totalEvents: statsData.events || 12,
+          systemHealth: 'Good'
+        })
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
+      // Keep default stats if API fails
+      setStudentStats({
+        totalStudents: 420,
+        totalTeachers: 28,
+        totalClasses: 15,
+        totalEvents: 12,
+        systemHealth: 'Good'
+      })
     } finally {
       setLoading(false)
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  const getGreeting = () => {
-    const hour = new Date().getHours()
-    if (hour < 12) return 'Good Morning'
-    if (hour < 17) return 'Good Afternoon'
-    return 'Good Evening'
-  }
-
-  const sendMessage = () => {
-    if (!message.trim() || !selectedChatbot) return
-    
-    const newMessage = {
-      id: Date.now(),
-      text: message,
-      sender: 'user',
-      timestamp: new Date().toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      })
-    }
-    
-    setChatMessages(prev => [...prev, newMessage])
-    setMessage('')
-    
-    // Simulate AI response
-    setTimeout(() => {
-      const responses = {
-        'college': "I'll help you with college announcements and important events. What would you like to know?",
-        'department': "I can assist you with department-specific information and events. How can I help?",
-        'student': "I'm your personal academic assistant. I can help track your assignments, exams, and deadlines. What do you need?",
-        'teacher': "I'll help you connect with your teachers and get academic support. What's your question?"
-      }
-      
-      const aiResponse = {
-        id: Date.now() + 1,
-        text: responses[selectedChatbot as keyof typeof responses] || "Hello! How can I assist you today?",
-        sender: 'ai',
-        timestamp: new Date().toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        })
-      }
-      
-      setChatMessages(prev => [...prev, aiResponse])
-    }, 1000)
-  }
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-50 dark:from-slate-950 dark:via-purple-950 dark:to-indigo-950 flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
-          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading your dashboard...</p>
+          <div className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading student dashboard...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-blue-950 dark:to-indigo-950" suppressHydrationWarning>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-50 dark:from-slate-950 dark:via-purple-950 dark:to-indigo-950" suppressHydrationWarning>
+      {/* Mobile Menu Button */}
+      <Button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        variant="outline"
+        size="sm"
+        className="fixed top-4 left-4 z-40 lg:hidden bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border-white/20 shadow-lg"
+      >
+        <Menu className="h-4 w-4" />
+      </Button>
+
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -190,8 +119,8 @@ export default function StudentDashboard() {
           <div className="flex items-center justify-between mb-6">
             {!sidebarCollapsed && (
               <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                  <GraduationCap className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg">
+                  <User className="w-6 h-6 text-white" />
                 </div>
                 <div>
                   <h2 className="font-bold text-gray-900 dark:text-white">Student Portal</h2>
@@ -201,8 +130,8 @@ export default function StudentDashboard() {
             )}
             {sidebarCollapsed && (
               <div className="w-full flex flex-col items-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg mb-2">
-                  <GraduationCap className="w-6 h-6 text-white" />
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg mb-2">
+                  <User className="w-6 h-6 text-white" />
                 </div>
                 <Button
                   onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -247,120 +176,98 @@ export default function StudentDashboard() {
           {/* Navigation */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none">
             <nav className="space-y-2 mb-6">
-            <Button 
-              variant="default" 
-              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700`}
-              title={sidebarCollapsed ? "Dashboard" : ""}
-            >
-              <Home className="w-5 h-5" />
-              {!sidebarCollapsed && <span className="ml-3">Dashboard</span>}
-            </Button>
-            <Button 
-              variant="ghost" 
-              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-blue-50 dark:hover:bg-blue-900/20`}
-              title={sidebarCollapsed ? "Announcements" : ""}
-            >
-              <Bell className="w-5 h-5" />
+              <Button 
+                variant={activeTab === 'dashboard' ? 'default' : 'ghost'}
+                onClick={() => setActiveTab('dashboard')}
+                className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} ${activeTab === 'dashboard' ? 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700' : 'hover:bg-purple-50 dark:hover:bg-purple-900/20'}`}
+                title={sidebarCollapsed ? "Dashboard" : ""}
+              >
+                <Home className="w-5 h-5" />
+                {!sidebarCollapsed && <span className="ml-3">Dashboard</span>}
+              </Button>
+              
+              {/* Viewing/Query Section */}
               {!sidebarCollapsed && (
-                <>
-                  <span className="ml-3">Announcements</span>
-                  <Badge variant="secondary" className="ml-auto bg-blue-100 text-blue-600">{announcements.length}</Badge>
-                </>
+                <div className="pt-4 pb-2">
+                  <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-2">
+                    View & Browse
+                  </h4>
+                </div>
               )}
-            </Button>
-            <Button 
-              variant="ghost" 
-              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-blue-50 dark:hover:bg-blue-900/20`}
-              title={sidebarCollapsed ? "Events" : ""}
-            >
-              <Calendar className="w-5 h-5" />
-              {!sidebarCollapsed && (
-                <>
-                  <span className="ml-3">Events</span>
-                  <Badge variant="secondary" className="ml-auto bg-green-100 text-green-600">{upcomingReminders.length}</Badge>
-                </>
-              )}
-            </Button>
-            <Button 
-              variant="ghost" 
-              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-blue-50 dark:hover:bg-blue-900/20`}
-              title={sidebarCollapsed ? "AI Assistant" : ""}
-            >
-              <Brain className="w-5 h-5" />
-              {!sidebarCollapsed && <span className="ml-3">AI Assistant</span>}
-            </Button>
-            <Button 
-              variant="ghost" 
-              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-blue-50 dark:hover:bg-blue-900/20`}
-              title={sidebarCollapsed ? "Profile" : ""}
-            >
-              <User className="w-5 h-5" />
-              {!sidebarCollapsed && <span className="ml-3">Profile</span>}
-            </Button>
-            <Button 
-              variant="ghost" 
-              className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} hover:bg-blue-50 dark:hover:bg-blue-900/20`}
-              title={sidebarCollapsed ? "Settings" : ""}
-            >
-              <Settings className="w-5 h-5" />
-              {!sidebarCollapsed && <span className="ml-3">Settings</span>}
-            </Button>
+              
+              <Button 
+                variant={activeTab === 'view-college-events' ? 'default' : 'ghost'}
+                onClick={() => setActiveTab('view-college-events')}
+                className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} ${activeTab === 'view-college-events' ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700' : 'hover:bg-purple-50 dark:hover:bg-purple-900/20'}`}
+                title={sidebarCollapsed ? "View College Events" : ""}
+              >
+                <School className="w-5 h-5" />
+                {!sidebarCollapsed && <span className="ml-3">View College Events</span>}
+              </Button>
+              
+              <Button 
+                variant={activeTab === 'view-dept-events' ? 'default' : 'ghost'}
+                onClick={() => setActiveTab('view-dept-events')}
+                className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} ${activeTab === 'view-dept-events' ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700' : 'hover:bg-purple-50 dark:hover:bg-purple-900/20'}`}
+                title={sidebarCollapsed ? "View Department Events" : ""}
+              >
+                <Building className="w-5 h-5" />
+                {!sidebarCollapsed && <span className="ml-3">View Department Events</span>}
+              </Button>
+
+              <Button 
+                variant={activeTab === 'chat' ? 'default' : 'ghost'}
+                onClick={() => setActiveTab('chat')}
+                className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} ${activeTab === 'chat' ? 'bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700' : 'hover:bg-purple-50 dark:hover:bg-purple-900/20'}`}
+                title={sidebarCollapsed ? "AI Assistant" : ""}
+              >
+                <MessageSquare className="w-5 h-5" />
+                {!sidebarCollapsed && <span className="ml-3">AI Assistant</span>}
+              </Button>
             </nav>
 
             {!sidebarCollapsed && (
-              <>
-                {/* Quick Stats */}
-                <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
-                    <TrendingUp className="w-4 h-4 mr-2" />
-                    Quick Overview
-                  </h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-3 rounded-xl border border-blue-200/50 dark:border-blue-800/50">
-                      <div className="flex items-center justify-between">
-                        <Calendar className="w-4 h-4 text-blue-600" />
-                        <span className="text-lg font-bold text-blue-700 dark:text-blue-400">{upcomingReminders.length}</span>
-                      </div>
-                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Events</p>
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
+                  <User className="w-4 h-4 mr-2" />
+                  Student Overview
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <Card className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{studentStats.totalStudents}</div>
+                      <div className="text-xs text-blue-500 dark:text-blue-400">Students</div>
                     </div>
-                    <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-3 rounded-xl border border-green-200/50 dark:border-green-800/50">
-                      <div className="flex items-center justify-between">
-                        <Bell className="w-4 h-4 text-green-600" />
-                        <span className="text-lg font-bold text-green-700 dark:text-green-400">{announcements.length}</span>
-                      </div>
-                      <p className="text-xs text-green-600 dark:text-green-400 mt-1">Updates</p>
+                  </Card>
+                  <Card className="p-3 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-green-600 dark:text-green-400">{studentStats.totalTeachers}</div>
+                      <div className="text-xs text-green-500 dark:text-green-400">Teachers</div>
                     </div>
-                  </div>
+                  </Card>
+                  <Card className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-purple-600 dark:text-purple-400">{studentStats.totalClasses}</div>
+                      <div className="text-xs text-purple-500 dark:text-purple-400">Classes</div>
+                    </div>
+                  </Card>
+                  <Card className="p-3 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-orange-200 dark:border-orange-800">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-orange-600 dark:text-orange-400">{studentStats.totalEvents}</div>
+                      <div className="text-xs text-orange-500 dark:text-orange-400">Events</div>
+                    </div>
+                  </Card>
                 </div>
-
-                {/* Recent Activity */}
-                <div className="flex-1 min-h-0 mb-6">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center">
-                    <Clock className="w-4 h-4 mr-2" />
-                    Recent Activity
-                  </h3>
-                  <div className="space-y-3 overflow-y-auto max-h-32">
-                    {upcomingReminders.slice(0, 3).map((item) => (
-                      <div key={item.id} className="p-3 bg-gray-50/80 dark:bg-gray-700/50 rounded-lg border border-gray-200/50 dark:border-gray-600/50">
-                        <h4 className="font-medium text-gray-900 dark:text-white text-sm line-clamp-1">{item.title}</h4>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-                          <Clock className="w-3 h-3 mr-1" />
-                          {formatDate(item.dueDate)}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
+              </div>
             )}
           </div>
 
-          {/* Sign Out - Always at bottom */}
-          <div className="mt-auto pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
+          {/* Sign Out */}
+          <div className="mt-auto">
             <Button 
-              onClick={() => signOut({ callbackUrl: '/auth/signin' })} 
               variant="ghost" 
               className={`w-full ${sidebarCollapsed ? 'h-12 w-12 p-0 mx-auto' : 'justify-start'} text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20`}
+              onClick={() => signOut({ callbackUrl: '/auth/signin' })}
               title={sidebarCollapsed ? "Sign Out" : ""}
             >
               <LogOut className="w-5 h-5" />
@@ -371,277 +278,138 @@ export default function StudentDashboard() {
       </div>
 
       {/* Main Content */}
-      <div className={`${sidebarCollapsed ? 'lg:ml-28' : 'lg:ml-96'} min-h-screen transition-all duration-300`}>
-        {/* Mobile Header */}
-        <div className="lg:hidden bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50 p-4">
-          <div className="flex items-center justify-between">
-            <Button
-              onClick={() => setSidebarOpen(true)}
-              variant="ghost"
-              size="sm"
-              className="p-2"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-            <h1 className="font-semibold text-gray-900 dark:text-white">Student Dashboard</h1>
-            <div className="w-8 h-8" />
+      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-28' : 'lg:ml-96'} min-h-screen`}>
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-4 lg:py-8">
+          {/* Header */}
+          <div className="mb-6 lg:mb-8 pt-16 lg:pt-0">
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">Student Dashboard</h1>
+            <p className="text-gray-600 dark:text-gray-400">Welcome back, {session?.user?.name || 'Student'}</p>
           </div>
-        </div>
 
-        {/* Content */}
-        <div className="p-6 lg:p-8">
-          {/* Welcome Section */}
-          <div className="mb-8">
-            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-8 text-white relative overflow-hidden">
-              <div className="absolute inset-0 bg-black/10 rounded-2xl"></div>
-              <div className="relative z-10">
-                <h1 className="text-3xl lg:text-4xl font-bold mb-2">
-                  {getGreeting()}, {session?.user?.name?.split(' ')[0]}! 👋
-                </h1>
-                <p className="text-blue-100 text-lg mb-4">Welcome to your AI-powered learning portal</p>
-                <div className="flex flex-wrap gap-4 text-sm">
-                  <span className="flex items-center bg-white/20 px-3 py-1 rounded-full">
-                    <GraduationCap className="w-4 h-4 mr-1" />
-                    {session?.user?.department}
-                  </span>
-                  <span className="flex items-center bg-white/20 px-3 py-1 rounded-full">
-                    <BookOpen className="w-4 h-4 mr-1" />
-                    {session?.user?.year} Year
-                  </span>
-                  <span className="flex items-center bg-white/20 px-3 py-1 rounded-full">
-                    <User className="w-4 h-4 mr-1" />
-                    USN: {session?.user?.rollNo}
-                  </span>
-                </div>
+          {/* Tab Content */}
+          {activeTab === 'dashboard' && (
+            <div className="space-y-6">
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+                <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800">
+                  <CardContent className="p-4 lg:p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs lg:text-sm font-medium text-blue-600 dark:text-blue-400">Total Students</p>
+                        <p className="text-xl lg:text-3xl font-bold text-blue-700 dark:text-blue-300">{studentStats.totalStudents.toLocaleString()}</p>
+                      </div>
+                      <Users className="h-8 w-8 lg:h-12 lg:w-12 text-blue-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200 dark:border-green-800">
+                  <CardContent className="p-4 lg:p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs lg:text-sm font-medium text-green-600 dark:text-green-400">Total Teachers</p>
+                        <p className="text-xl lg:text-3xl font-bold text-green-700 dark:text-green-300">{studentStats.totalTeachers}</p>
+                      </div>
+                      <GraduationCap className="h-8 w-8 lg:h-12 lg:w-12 text-green-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800">
+                  <CardContent className="p-4 lg:p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs lg:text-sm font-medium text-purple-600 dark:text-purple-400">Total Classes</p>
+                        <p className="text-xl lg:text-3xl font-bold text-purple-700 dark:text-purple-300">{studentStats.totalClasses}</p>
+                      </div>
+                      <School className="h-8 w-8 lg:h-12 lg:w-12 text-purple-500" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-orange-200 dark:border-orange-800">
+                  <CardContent className="p-4 lg:p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs lg:text-sm font-medium text-orange-600 dark:text-orange-400">Total Events</p>
+                        <p className="text-xl lg:text-3xl font-bold text-orange-700 dark:text-orange-300">{studentStats.totalEvents}</p>
+                      </div>
+                      <Brain className="h-8 w-8 lg:h-12 lg:w-12 text-orange-500" />
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            </div>
-          </div>
 
-          {/* Tab Navigation */}
-          <div className="mb-8 border-b border-gray-200 dark:border-gray-700">
-            <nav className="flex space-x-8">
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'overview'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Overview
-              </button>
-              <button
-                onClick={() => setActiveTab('search')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'search'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Search Documents
-              </button>
-              <button
-                onClick={() => setActiveTab('notifications')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'notifications'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Notifications
-              </button>
-            </nav>
-          </div>
-
-          {/* Conditional Content Based on Active Tab */}
-          {activeTab === 'search' && (
-            <div className="mb-8">
+              {/* Welcome Card */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Brain className="w-5 h-5 text-blue-500" />
-                    Document Search
+                    <User className="w-5 h-5 text-blue-500" />
+                    Student Functions
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center py-8">
-                    <Brain className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                      AI-Powered Document Search
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">
-                      Use the AI Assistant on the right to search through college documents and get answers to your questions.
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Ask questions about courses, events, announcements, and more.
-                    </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 border border-purple-200 dark:border-purple-800 rounded-lg bg-purple-50 dark:bg-purple-900/20">
+                      <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-2">College Events View</h3>
+                      <p className="text-sm text-purple-700 dark:text-purple-300 mb-3">View and browse college event documents and announcements (read-only access).</p>
+                      <Button 
+                        onClick={() => setActiveTab('view-college-events')}
+                        size="sm" 
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        View College Events
+                      </Button>
+                    </div>
+                    <div className="p-4 border border-cyan-200 dark:border-cyan-800 rounded-lg bg-cyan-50 dark:bg-cyan-900/20">
+                      <h3 className="font-semibold text-cyan-900 dark:text-cyan-100 mb-2">Department Events View</h3>
+                      <p className="text-sm text-cyan-700 dark:text-cyan-300 mb-3">View and browse department-specific event documents and announcements.</p>
+                      <Button 
+                        onClick={() => setActiveTab('view-dept-events')}
+                        size="sm" 
+                        className="bg-cyan-600 hover:bg-cyan-700"
+                      >
+                        View Dept Events
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-4">
+                    <div className="p-4 border border-green-200 dark:border-green-800 rounded-lg bg-green-50 dark:bg-green-900/20">
+                      <h3 className="font-semibold text-green-900 dark:text-green-100 mb-2">AI Assistant</h3>
+                      <p className="text-sm text-green-700 dark:text-green-300 mb-3">Chat with AI to get answers about college events, department events, and system information.</p>
+                      <Button 
+                        onClick={() => setActiveTab('chat')}
+                        size="sm" 
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        Start Chat
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
           )}
 
-          {activeTab === 'notifications' && (
-            <div className="mb-8">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Bell className="w-5 h-5 text-blue-500" />
-                    Your Notifications
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {notifications.length > 0 ? (
-                      notifications.map((notification: any, index: number) => (
-                        <div key={index} className="flex items-start justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-gray-900 dark:text-white">{notification.title}</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{notification.message}</p>
-                            <p className="text-xs text-gray-500">{new Date(notification.created_at).toLocaleDateString()}</p>
-                          </div>
-                          <Badge variant={notification.type === 'success' ? 'default' : 'secondary'}>
-                            {notification.type}
-                          </Badge>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-gray-500 dark:text-gray-400 text-center py-4">No notifications</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+          {activeTab === 'view-college-events' && (
+            <div className="space-y-6">
+              <CollegeEventView />
             </div>
           )}
 
-          {activeTab === 'overview' && (
-          <>
-
-          {/* AI Chatbot Selection */}
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
-              <Brain className="w-6 h-6 mr-3 text-blue-600" />
-              AI Learning Assistants
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <Card 
-                className={`cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-105 border-2 ${
-                  selectedChatbot === 'college' 
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg' 
-                    : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'
-                }`}
-                onClick={() => setSelectedChatbot('college')}
-              >
-                <CardContent className="p-6">
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
-                      <Megaphone className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">College Events</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Get college-wide announcements and updates</p>
-                    </div>
-                    {selectedChatbot === 'college' && (
-                      <Badge className="bg-blue-500 text-white">Active</Badge>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card 
-                className={`cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-105 border-2 ${
-                  selectedChatbot === 'department' 
-                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20 shadow-lg' 
-                    : 'border-gray-200 dark:border-gray-700 hover:border-green-300'
-                }`}
-                onClick={() => setSelectedChatbot('department')}
-              >
-                <CardContent className="p-6">
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
-                      <Users className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">Department Events</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Department-specific events and information</p>
-                    </div>
-                    {selectedChatbot === 'department' && (
-                      <Badge className="bg-green-500 text-white">Active</Badge>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card 
-                className={`cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-105 border-2 ${
-                  selectedChatbot === 'student' 
-                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 shadow-lg' 
-                    : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
-                }`}
-                onClick={() => setSelectedChatbot('student')}
-              >
-                <CardContent className="p-6">
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
-                      <GraduationCap className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">Personal Assistant</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Track assignments, exams, and deadlines</p>
-                    </div>
-                    {selectedChatbot === 'student' && (
-                      <Badge className="bg-purple-500 text-white">Active</Badge>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card 
-                className={`cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-105 border-2 ${
-                  selectedChatbot === 'teacher' 
-                    ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20 shadow-lg' 
-                    : 'border-gray-200 dark:border-gray-700 hover:border-orange-300'
-                }`}
-                onClick={() => setSelectedChatbot('teacher')}
-              >
-                <CardContent className="p-6">
-                  <div className="flex flex-col items-center text-center space-y-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
-                      <UserCheck className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">Teacher Connect</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Connect with teachers for academic support</p>
-                    </div>
-                    {selectedChatbot === 'teacher' && (
-                      <Badge className="bg-orange-500 text-white">Active</Badge>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+          {activeTab === 'view-dept-events' && (
+            <div className="space-y-6">
+              <DepartmentEventView />
             </div>
+          )}
 
-            {/* AI Chat Interface */}
-            {selectedChatbot && (
-              <AiChat 
-                userRole="student"
-                userId={session?.user?.id || '1'}
-                assistantName={
-                  selectedChatbot === 'college' ? 'College Assistant' :
-                  selectedChatbot === 'department' ? 'Department Assistant' :
-                  selectedChatbot === 'student' ? 'Personal Assistant' :
-                  'Teacher Connect Assistant'
-                }
-              />
-            )}
-          </div>
-          </>
+          {activeTab === 'chat' && (
+            <div className="space-y-6">
+              <AIAssistantHub />
+            </div>
           )}
         </div>
       </div>
     </div>
   )
 }
-
-

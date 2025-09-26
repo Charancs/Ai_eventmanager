@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useRef, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
@@ -12,8 +12,7 @@ import {
   Send, 
   Loader2, 
   User, 
-  FileText,
-  MessageCircle
+  FileText
 } from 'lucide-react'
 
 interface ChatMessage {
@@ -45,7 +44,6 @@ export default function AiChat({ userRole, userId = '1', assistantName = "AI Ass
     scrollToBottom()
   }, [messages])
 
-  // Add welcome message on component mount
   useEffect(() => {
     const welcomeMessage: ChatMessage = {
       id: '1',
@@ -62,7 +60,6 @@ export default function AiChat({ userRole, userId = '1', assistantName = "AI Ass
 
     const currentUserId = userId?.toString() || session?.user?.id || '1'
     const currentRole = userRole || session?.user?.role || 'admin'
-    const currentDepartment = session?.user?.department || (currentRole === 'admin' ? 'admin' : 'Computer Science')
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -83,9 +80,8 @@ export default function AiChat({ userRole, userId = '1', assistantName = "AI Ass
         },
         body: JSON.stringify({
           query: userMessage.text,
-          user_id: currentUserId,
-          role: currentRole,
-          department: currentDepartment
+          user_id: parseInt(currentUserId),
+          role: currentRole
         }),
       })
 
@@ -144,34 +140,36 @@ export default function AiChat({ userRole, userId = '1', assistantName = "AI Ass
             Online
           </Badge>
         </CardTitle>
-        <p className="text-sm text-gray-500">Role: {userRole} | User: {userId || session?.user?.id || 1}</p>
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col p-0">
-        {/* Messages */}
-        <div className="flex-1 p-4 overflow-y-auto">
-          <div className="space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex items-start gap-3 ${
-                  message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'
-                }`}
-              >
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${
+                message.sender === 'user' ? 'justify-end' : 'justify-start'
+              }`}
+            >
+              <div className={`flex items-start gap-3 max-w-[80%] ${
+                message.sender === 'user' ? 'flex-row-reverse' : ''
+              }`}>
                 <Avatar className="w-8 h-8">
-                  <AvatarFallback className={
+                  <AvatarFallback className={`${
                     message.sender === 'user' 
-                      ? 'bg-blue-500 text-white' 
-                      : 'bg-gray-500 text-white'
-                  }>
-                    {message.sender === 'user' ? <User className="w-4 h-4" /> : <Brain className="w-4 h-4" />}
+                      ? 'bg-blue-100 dark:bg-blue-900' 
+                      : 'bg-gray-100 dark:bg-gray-800'
+                  }`}>
+                    {message.sender === 'user' ? (
+                      <User className="w-4 h-4 text-blue-600" />
+                    ) : (
+                      <Brain className="w-4 h-4 text-gray-600" />
+                    )}
                   </AvatarFallback>
                 </Avatar>
 
-                <div className={`flex-1 max-w-[80%] ${
-                  message.sender === 'user' ? 'text-right' : 'text-left'
-                }`}>
-                  <div className={`inline-block p-3 rounded-lg ${
+                <div className="flex flex-col">
+                  <div className={`p-3 rounded-lg ${
                     message.sender === 'user'
                       ? 'bg-blue-500 text-white'
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
@@ -192,13 +190,15 @@ export default function AiChat({ userRole, userId = '1', assistantName = "AI Ass
                   </div>
                 </div>
               </div>
-            ))}
+            </div>
+          ))}
 
-            {isLoading && (
-              <div className="flex items-start gap-3">
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="flex items-start gap-3 max-w-[80%]">
                 <Avatar className="w-8 h-8">
-                  <AvatarFallback className="bg-gray-500 text-white">
-                    <Brain className="w-4 h-4" />
+                  <AvatarFallback className="bg-gray-100 dark:bg-gray-800">
+                    <Brain className="w-4 h-4 text-gray-600" />
                   </AvatarFallback>
                 </Avatar>
                 <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg">
@@ -210,12 +210,12 @@ export default function AiChat({ userRole, userId = '1', assistantName = "AI Ass
                   </div>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
         <div className="border-t border-gray-200 dark:border-gray-700 p-4">
           <div className="flex gap-2">
             <Input
@@ -240,7 +240,7 @@ export default function AiChat({ userRole, userId = '1', assistantName = "AI Ass
             </Button>
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            Press Enter to send • Shift+Enter for new line
+            Press Enter to send  Shift+Enter for new line
           </p>
         </div>
       </CardContent>
