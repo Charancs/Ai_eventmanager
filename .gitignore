@@ -19,10 +19,14 @@
 
 # production
 /build
+/dist
 
 # misc
 .DS_Store
 *.pem
+.vscode/
+.idea/
+*.log
 
 # debug
 npm-debug.log*
@@ -32,6 +36,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # vercel
 .vercel
@@ -40,6 +48,53 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# Prisma
 /src/generated/prisma
-/ENV
-/storage
+
+# Python Backend
+/Backend/ENV/
+/Backend/__pycache__/
+/Backend/*.pyc
+/Backend/*.pyo
+/Backend/*.pyd
+/Backend/.Python
+/Backend/env/
+/Backend/venv/
+/Backend/.env
+/Backend/.venv
+*.egg-info/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Storage directories
+/storage/
+/uploads/
+/Backend/storage/
+/Backend/uploads/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+/tmp/
