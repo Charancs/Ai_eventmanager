@@ -571,8 +571,8 @@ class VectorDatabase:
             query_embedding = np.array([query_response.data[0].embedding])
             
             all_results = []
-            storage_path = self._get_college_event_storage_path()
-            vector_db_path = storage_path / "vector_database"
+            storage_paths = self._get_college_event_storage_path()
+            vector_db_path = storage_paths['vector_db']
             
             # Search through all college event documents
             if vector_db_path.exists():
@@ -912,6 +912,7 @@ Answer:"""
                 pickle.dump(faiss_index, f)
             
             # Create document metadata with correct file path
+            cleaned_department = department.replace(' ', '').replace('/', '_').replace('\\', '_')
             document_metadata = {
                 'id': document_id,
                 'title': title,
@@ -921,7 +922,7 @@ Answer:"""
                 'uploaded_by': user_id,
                 'uploader_role': role,
                 'upload_date': datetime.now().isoformat(),
-                'file_path': f"storage/uploads/department_events/{department.replace(' ', '').replace('/', '_').replace('\\', '_')}/{document_id}_{Path(file_path).stem}{Path(file_path).suffix}",
+                'file_path': f"storage/uploads/department_events/{cleaned_department}/{document_id}_{Path(file_path).stem}{Path(file_path).suffix}",
                 'chunks_count': len(chunks),
                 'file_size': os.path.getsize(file_path)
             }

@@ -74,6 +74,12 @@ class DepartmentEventQuery(BaseModel):
     role: str
     department: str
 
+class SimpleChatQuery(BaseModel):
+    query: str
+    user_id: str
+    role: str
+    department: Optional[str] = None
+
 # Event extraction models for AI processing
 class ExtractedEvent(BaseModel):
     """Model for a single extracted event"""
@@ -1346,6 +1352,83 @@ async def get_today_events_notifications():
     except Exception as e:
         print(f"Error getting today's events notifications: {e}")
         raise HTTPException(status_code=500, detail=f"Error fetching today's notifications: {str(e)}")
+
+# Simple AI Chatbot endpoint for students and teachers
+class SimpleChatQuery(BaseModel):
+    query: str
+    user_id: str
+    role: str
+    department: Optional[str] = None
+
+@app.post("/api/simple-chat")
+async def simple_ai_chat(query_data: SimpleChatQuery):
+    """Simple AI chatbot that responds differently based on user role"""
+    try:
+        from openai import OpenAI
+        
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        
+        query = query_data.query
+        role = query_data.role.lower()
+        department = query_data.department or "your department"
+        
+        # Create role-specific system prompts
+        if role == "student":
+            system_prompt = f"""You are a helpful AI assistant for college students. You provide friendly, supportive, and educational responses. 
+            
+            Your role is to:
+            - Help with academic questions and study guidance
+            - Provide information about college life and resources
+            - Offer encouragement and motivation for learning
+            - Suggest study techniques and time management tips
+            - Answer questions about courses, assignments, and academic policies
+            - Be understanding of student challenges and stress
+            
+            Keep responses conversational, encouraging, and student-friendly. If you don't know something specific about their college, suggest they check with their teachers or administration."""
+            
+        elif role == "teacher":
+            system_prompt = f"""You are a professional AI assistant for college teachers and educators. You provide knowledgeable, professional, and pedagogically sound responses.
+            
+            Your role is to:
+            - Assist with teaching methods and educational strategies
+            - Help with curriculum planning and course design
+            - Provide insights on student assessment and evaluation
+            - Suggest classroom management techniques
+            - Offer guidance on educational technology and tools
+            - Support professional development in education
+            - Help with research and academic writing
+            
+            Keep responses professional, well-informed, and focused on educational excellence. Draw from best practices in higher education."""
+            
+        else:
+            # Fallback for other roles
+            system_prompt = """You are a helpful AI assistant for college staff. Provide professional, informative, and supportive responses appropriate for an educational environment."""
+        
+        # Generate response
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": query}
+            ],
+            max_tokens=300,
+            temperature=0.7,
+            top_p=1.0
+        )
+        
+        ai_response = response.choices[0].message.content.strip()
+        
+        return {
+            "success": True,
+            "response": ai_response,
+            "role_context": role,
+            "department": department,
+            "query": query
+        }
+        
+    except Exception as e:
+        print(f"Simple AI chat error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"AI chat error: {str(e)}")
 
 # File serving endpoints
 @app.get("/uploads/{path:path}")

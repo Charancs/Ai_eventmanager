@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import CollegeEventChatbot from '@/components/college-event-chatbot'
 import DepartmentEventChatbot from '@/components/department-event-chatbot'
 import SubjectChatbot from '@/components/subject-chatbot'
+import SimpleAIChatbot from '@/components/simple-ai-chatbot'
 import { 
   MessageSquare, 
   Building, 
@@ -15,7 +16,8 @@ import {
   Brain,
   Filter,
   Users,
-  GraduationCap
+  GraduationCap,
+  Bot
 } from 'lucide-react'
 
 interface Department {
@@ -31,13 +33,14 @@ interface Department {
 
 export default function AIAssistantHub() {
   const { data: session } = useSession()
-  const [activeAssistant, setActiveAssistant] = useState<'college' | 'department' | 'subject'>('college')
+  const [activeAssistant, setActiveAssistant] = useState<'college' | 'department' | 'subject' | 'simple'>('college')
   const [selectedDepartment, setSelectedDepartment] = useState<string>('')
   const [departments, setDepartments] = useState<Department[]>([])
   const [loading, setLoading] = useState(true)
 
   const isCollegeAdmin = session?.user?.role === 'admin'
-  const isDepartmentUser = ['teacher', 'student', 'department', 'DEPARTMENT_ADMIN'].includes(session?.user?.role || '')
+  const isDepartmentUser = ['teacher', 'student', 'department', 'DEPARTMENT_ADMIN', 'TEACHER', 'STUDENT'].includes(session?.user?.role || '')
+  const isStudentOrTeacher = ['student', 'teacher', 'STUDENT', 'TEACHER'].includes(session?.user?.role || '')
   const userDepartment = session?.user?.department
 
   // Debug: Log session info
@@ -46,10 +49,12 @@ export default function AIAssistantHub() {
     sessionDepartment: session?.user?.department,
     isCollegeAdmin,
     isDepartmentUser,
+    isStudentOrTeacher,
     userDepartment,
     departmentsCount: departments.length,
     selectedDepartment,
-    loading
+    loading,
+    sessionUser: session?.user
   })
 
   useEffect(() => {
@@ -124,7 +129,7 @@ export default function AIAssistantHub() {
           </p>
 
           {/* Assistant Type Selection */}
-          <div className="flex gap-4 mb-6">
+          <div className="flex gap-4 mb-6 flex-wrap">
             <Button
               variant={activeAssistant === 'college' ? 'default' : 'outline'}
               onClick={() => setActiveAssistant('college')}
@@ -149,6 +154,25 @@ export default function AIAssistantHub() {
               <GraduationCap className="h-4 w-4" />
               Subject Documents
             </Button>
+            {/* Simple AI Chatbot - Only for Students and Teachers */}
+            {(() => {
+              console.log('Simple AI Chatbot Button Check:', {
+                isStudentOrTeacher,
+                sessionRole: session?.user?.role,
+                shouldShow: isStudentOrTeacher
+              });
+              return null;
+            })()}
+            {isStudentOrTeacher && (
+              <Button
+                variant={activeAssistant === 'simple' ? 'default' : 'outline'}
+                onClick={() => setActiveAssistant('simple')}
+                className="flex items-center gap-2"
+              >
+                <Bot className="h-4 w-4" />
+                AI Assistant
+              </Button>
+            )}
           </div>
 
           {/* Temporary Debug Display */}
@@ -303,6 +327,21 @@ export default function AIAssistantHub() {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        ) : activeAssistant === 'simple' ? (
+          <Card className="h-full">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Bot className="h-5 w-5 text-blue-600" />
+                AI Assistant
+                <Badge variant="secondary" className="ml-2">
+                  {['student', 'STUDENT'].includes(session?.user?.role || '') ? 'Student Mode' : 'Teacher Mode'}
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <SimpleAIChatbot />
             </CardContent>
           </Card>
         ) : (
