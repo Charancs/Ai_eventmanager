@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { MessageCircle, Send, Mic, MicOff, Calendar, Users, Info, MapPin } from 'lucide-react'
+import { MessageCircle, Send, Mic, MicOff, Calendar, Users, Info, MapPin, Volume2, VolumeX } from 'lucide-react'
 import { useSession } from 'next-auth/react'
+import { useVoiceChat } from '@/hooks/useVoiceChat'
 
 interface ChatMessage {
   id: string
@@ -42,8 +43,26 @@ export default function CollegeEventChatbot({ className = '', filterDepartment }
   ])
   const [currentMessage, setCurrentMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [isListening, setIsListening] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Voice chat functionality
+  const {
+    isListening,
+    isSpeaking,
+    isSupported,
+    startListening,
+    stopListening,
+    toggleListening,
+    speak,
+    stopSpeaking
+  } = useVoiceChat({
+    onTranscript: (text) => {
+      setCurrentMessage(text)
+    },
+    onError: (error) => {
+      console.error('Voice chat error:', error)
+    }
+  })
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -127,38 +146,44 @@ export default function CollegeEventChatbot({ className = '', filterDepartment }
     }
   }
 
-  const toggleVoiceInput = () => {
-    if (!isListening) {
-      // Start voice recognition
-      if ('webkitSpeechRecognition' in window) {
-        const recognition = new (window as any).webkitSpeechRecognition()
-        recognition.continuous = false
-        recognition.interimResults = false
-        recognition.lang = 'en-US'
-
-        recognition.onstart = () => {
-          setIsListening(true)
-        }
-
-        recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript
-          setCurrentMessage(transcript)
-          setIsListening(false)
-        }
-
-        recognition.onerror = () => {
-          setIsListening(false)
-        }
-
-        recognition.onend = () => {
-          setIsListening(false)
-        }
-
-        recognition.start()
-      }
-    } else {
-      setIsListening(false)
+  const handleSpeakMessage = (text: string, event?: React.MouseEvent) => {
+    // Verify this is a trusted user interaction
+    if (!event || !event.isTrusted) {
+      console.log('⚠️ Speech request not from trusted user interaction, ignoring')
+      return
     }
+    
+    console.log('🎯 HANDLE SPEAK MESSAGE called (verified user click)')
+    console.log('Text to speak:', text)
+    console.log('Text length:', text.length)
+    console.log('Current isSpeaking state:', isSpeaking)
+    console.log('Event details:', {
+      type: event.type,
+      trusted: event.isTrusted,
+      target: event.target
+    })
+    
+    // Prevent event bubbling
+    event.stopPropagation()
+    event.preventDefault()
+    
+    // Stop current speech if playing
+    if (isSpeaking) {
+      console.log('🛑 Stopping current speech')
+      stopSpeaking()
+      return
+    }
+    
+    // Validate text
+    const cleanText = text.trim()
+    if (!cleanText || cleanText.length === 0) {
+      console.warn('❌ No text to speak')
+      return
+    }
+    
+    // Direct call - user interaction should be preserved
+    console.log('🚀 Starting speech from verified user click')
+    speak(cleanText)
   }
 
   const formatTime = (timestamp: Date) => {
@@ -273,8 +298,28 @@ export default function CollegeEventChatbot({ className = '', filterDepartment }
                       </div>
                     )}
                     
-                    {/* Enhanced Timestamp */}
-                    <div className="flex justify-end mt-3">
+                    {/* Enhanced Timestamp and Speaker Button */}
+                    <div className="flex justify-between items-center mt-3">
+                      {message.sender === 'ai' && isSupported && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            console.log('🔘 Speaker button clicked')
+                            console.log('Message object:', message)
+                            handleSpeakMessage(message.text, e)
+                          }}
+                          disabled={isLoading}
+                          className={`h-8 px-2 rounded-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed ${
+                            isSpeaking 
+                              ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50' 
+                              : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30'
+                          }`}
+                          title={isSpeaking ? 'Stop speaking' : 'Read aloud'}
+                        >
+                          {isSpeaking ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                        </Button>
+                      )}
                       <span className={`text-xs opacity-70 font-medium ${
                         message.sender === 'user' ? 'text-white/90' : 'text-gray-500 dark:text-gray-400'
                       }`}>
@@ -317,8 +362,12 @@ export default function CollegeEventChatbot({ className = '', filterDepartment }
                   value={currentMessage}
                   onChange={(e) => setCurrentMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Ask about college events, announcements, or activities..."
-                  className="pr-14 md:pr-16 py-4 md:py-5 rounded-2xl border-2 border-gray-200 dark:border-slate-600 focus:border-purple-400 dark:focus:border-purple-400 bg-white/90 dark:bg-slate-800/90 text-base shadow-lg backdrop-blur-sm placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                  placeholder={isListening ? "🎤 Listening... speak now" : "Ask about college events, announcements, or activities..."}
+                  className={`pr-14 md:pr-16 py-4 md:py-5 rounded-2xl border-2 ${
+                    isListening 
+                      ? 'border-red-400 dark:border-red-400 bg-red-50/50 dark:bg-red-900/20' 
+                      : 'border-gray-200 dark:border-slate-600 focus:border-purple-400 dark:focus:border-purple-400 bg-white/90 dark:bg-slate-800/90'
+                  } text-base shadow-lg backdrop-blur-sm placeholder:text-gray-500 dark:placeholder:text-gray-400 transition-all duration-200`}
                   disabled={isLoading}
                 />
                 <Button
@@ -326,14 +375,27 @@ export default function CollegeEventChatbot({ className = '', filterDepartment }
                   size="sm"
                   className={`absolute right-2 top-1/2 transform -translate-y-1/2 h-10 w-10 md:h-12 md:w-12 p-0 rounded-xl transition-all duration-200 hover:scale-110 ${
                     isListening 
-                      ? 'text-red-500 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 shadow-lg' 
+                      ? 'text-red-500 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 shadow-lg animate-pulse' 
                       : 'text-gray-400 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/30 shadow-md'
                   }`}
-                  onClick={toggleVoiceInput}
-                  disabled={isLoading}
-                  title={isListening ? 'Stop recording' : 'Start voice input'}
+                  onClick={toggleListening}
+                  disabled={isLoading || !isSupported}
+                  title={
+                    !isSupported 
+                      ? 'Voice input not supported in this browser' 
+                      : isListening 
+                        ? 'Stop recording (speak now)' 
+                        : 'Start voice input'
+                  }
                 >
-                  {isListening ? <MicOff className="h-5 w-5 md:h-6 md:w-6" /> : <Mic className="h-5 w-5 md:h-6 md:w-6" />}
+                  {isListening ? (
+                    <div className="relative">
+                      <MicOff className="h-5 w-5 md:h-6 md:w-6" />
+                      <div className="absolute -inset-1 rounded-full bg-red-400 opacity-20 animate-ping"></div>
+                    </div>
+                  ) : (
+                    <Mic className="h-5 w-5 md:h-6 md:w-6" />
+                  )}
                 </Button>
               </div>
               <Button
@@ -349,11 +411,228 @@ export default function CollegeEventChatbot({ className = '', filterDepartment }
             
             {/* Enhanced Status Badge */}
             <div className="flex justify-center mt-4">
-              <Badge variant="outline" className="text-sm bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400 px-4 py-2 rounded-full shadow-md">
-                <Info className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline font-medium">College Events - Accessible to All Students & Staff</span>
-                <span className="sm:hidden font-medium">College Events Chat</span>
-              </Badge>
+              <div className="flex gap-2 items-center">
+                <Badge variant="outline" className="text-sm bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-400 px-4 py-2 rounded-full shadow-md">
+                  <Info className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline font-medium">College Events - Accessible to All Students & Staff</span>
+                  <span className="sm:hidden font-medium">College Events Chat</span>
+                </Badge>
+                
+                {/* Voice Test Buttons - For Debugging */}
+                {isSupported && (
+                  <div className="flex gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        console.log('🧪 COMPREHENSIVE SPEECH TEST')
+                        
+                        // First check if speech synthesis exists
+                        if (!window.speechSynthesis) {
+                          console.log('❌ speechSynthesis not available')
+                          return
+                        }
+                        
+                        // Clear any existing speech
+                        window.speechSynthesis.cancel()
+                        
+                        // Log comprehensive system info
+                        console.log('🔍 SYSTEM AUDIO CHECK:')
+                        console.log('  - speechSynthesis.speaking:', window.speechSynthesis.speaking)
+                        console.log('  - speechSynthesis.pending:', window.speechSynthesis.pending)
+                        console.log('  - speechSynthesis.paused:', window.speechSynthesis.paused)
+                        
+                        const voices = window.speechSynthesis.getVoices()
+                        console.log('  - Available voices:', voices.length)
+                        
+                        if (voices.length > 0) {
+                          console.log('  - First voice:', voices[0].name, voices[0].lang)
+                          console.log('  - Voice local service:', voices[0].localService)
+                          console.log('  - Voice default:', voices[0].default)
+                        }
+                        
+                        // Try with very simple text and verbose logging
+                        const testUtterance = new SpeechSynthesisUtterance("Test")
+                        testUtterance.volume = 1.0
+                        testUtterance.rate = 0.8
+                        testUtterance.pitch = 1.0
+                        testUtterance.lang = 'en-US'
+                        
+                        // Use the first available voice explicitly
+                        if (voices.length > 0) {
+                          testUtterance.voice = voices[0]
+                          console.log('  - Using voice:', voices[0].name)
+                        }
+                        
+                        let startFired = false
+                        let endFired = false
+                        
+                        testUtterance.onstart = (e) => {
+                          startFired = true
+                          console.log('🟢 SPEECH STARTED - Audio should be playing NOW!')
+                          console.log('  - Event:', e)
+                          console.log('  - Utterance text:', e.utterance?.text)
+                          console.log('  - Current time:', new Date().toLocaleTimeString())
+                        }
+                        
+                        testUtterance.onend = (e) => {
+                          endFired = true
+                          console.log('🔴 SPEECH ENDED')
+                          console.log('  - Event:', e)
+                          console.log('  - Current time:', new Date().toLocaleTimeString())
+                        }
+                        
+                        testUtterance.onerror = (e) => {
+                          console.log('❌ SPEECH ERROR:', e.error)
+                          console.log('  - Error type:', e.error)
+                          console.log('  - Event:', e)
+                        }
+                        
+                        testUtterance.onboundary = (e) => {
+                          console.log('📍 Speech boundary:', e.name)
+                        }
+                        
+                        // Speak and monitor
+                        console.log('🚀 Calling speechSynthesis.speak()...')
+                        window.speechSynthesis.speak(testUtterance)
+                        
+                        // Check status after delays
+                        setTimeout(() => {
+                          console.log('⏰ Status after 500ms:')
+                          console.log('  - Speaking:', window.speechSynthesis.speaking)
+                          console.log('  - Pending:', window.speechSynthesis.pending)
+                          console.log('  - Start event fired:', startFired)
+                        }, 500)
+                        
+                        setTimeout(() => {
+                          console.log('⏰ Status after 2 seconds:')
+                          console.log('  - Speaking:', window.speechSynthesis.speaking)
+                          console.log('  - Start fired:', startFired)
+                          console.log('  - End fired:', endFired)
+                          
+                          if (!startFired) {
+                            console.log('🚨 PROBLEM: onstart never fired!')
+                            console.log('💡 This indicates the speech engine never began')
+                          } else if (!endFired) {
+                            console.log('🔄 Speech should still be playing...')
+                          }
+                        }, 2000)
+                      }}
+                      className="text-xs px-2 py-1"
+                      title="Direct speech test with detailed logging"
+                    >
+                      🔊 Direct
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        console.log('🧪 HOOK VOICE TEST')
+                        const testText = "This is a hook test. Can you hear me?"
+                        speak(testText)
+                      }}
+                      className="text-xs px-2 py-1"
+                      title="Hook speech test"
+                    >
+                      🎵 Hook
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        console.log('🔔 COMPREHENSIVE AUDIO SYSTEM TEST')
+                        
+                        // Test 1: Basic AudioContext
+                        try {
+                          const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
+                          console.log('✅ AudioContext created successfully')
+                          console.log('  - State:', audioCtx.state)
+                          console.log('  - Sample rate:', audioCtx.sampleRate)
+                          console.log('  - Base latency:', audioCtx.baseLatency)
+                          
+                          // Resume if suspended
+                          if (audioCtx.state === 'suspended') {
+                            audioCtx.resume().then(() => {
+                              console.log('▶️ AudioContext resumed')
+                            })
+                          }
+                          
+                          // Test oscillator (beep)
+                          const oscillator = audioCtx.createOscillator()
+                          const gainNode = audioCtx.createGain()
+                          
+                          oscillator.connect(gainNode)
+                          gainNode.connect(audioCtx.destination)
+                          
+                          oscillator.frequency.value = 440  // A4 note
+                          gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime)
+                          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5)
+                          
+                          oscillator.start(audioCtx.currentTime)
+                          oscillator.stop(audioCtx.currentTime + 0.5)
+                          
+                          console.log('🎵 Playing test tone - Listen for beep!')
+                          
+                        } catch (e) {
+                          console.error('❌ AudioContext test failed:', e)
+                        }
+                        
+                        // Test 2: HTML Audio element
+                        try {
+                          // Create a data URL for a short beep
+                          const audio = new Audio()
+                          audio.src = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmIdBDiR2O/AZykFJHTLr/LEdS4EOHfb1Nu9civDuQ=='
+                          
+                          audio.oncanplay = () => console.log('✅ HTML Audio ready')
+                          audio.onplay = () => console.log('▶️ HTML Audio started')
+                          audio.onerror = (e) => console.log('❌ HTML Audio error:', e)
+                          
+                          audio.play()
+                            .then(() => console.log('✅ HTML Audio play() succeeded'))
+                            .catch(e => console.log('❌ HTML Audio play() failed:', e))
+                            
+                        } catch (e) {
+                          console.error('❌ HTML Audio test failed:', e)
+                        }
+                        
+                        // Test 3: Check Windows/Edge specific issues
+                        console.log('🖥️ SYSTEM INFO:')
+                        console.log('  - User agent:', navigator.userAgent)
+                        console.log('  - Platform:', navigator.platform)
+                        console.log('  - Language:', navigator.language)
+                        console.log('  - Online:', navigator.onLine)
+                        
+                        // Check if running on Windows and Edge/Chrome
+                        const isWindows = navigator.platform.toLowerCase().includes('win')
+                        const isEdge = navigator.userAgent.includes('Edg/')
+                        const isChrome = navigator.userAgent.includes('Chrome/')
+                        
+                        console.log('  - Windows:', isWindows)
+                        console.log('  - Edge:', isEdge) 
+                        console.log('  - Chrome:', isChrome)
+                        
+                        if (isWindows) {
+                          console.log('💡 WINDOWS TIPS:')
+                          console.log('  - Check Windows Sound settings')
+                          console.log('  - Check if "Windows Speech Platform" is installed')
+                          console.log('  - Try different browser (Firefox/Chrome)')
+                          console.log('  - Check Windows Privacy > Microphone settings')
+                        }
+                        
+                        setTimeout(() => {
+                          console.log('📊 Did you hear any beeps? Report back what you heard!')
+                        }, 1000)
+                      }}
+                      className="text-xs px-2 py-1"
+                      title="Test all browser audio systems"
+                    >
+                      🔔 Audio
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>

@@ -12,8 +12,13 @@ import {
   Bot, 
   User,
   Loader2,
-  Sparkles
+  Sparkles,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX
 } from 'lucide-react'
+import { useVoiceChat } from '@/hooks/useVoiceChat'
 
 interface Message {
   id: string
@@ -33,6 +38,25 @@ export default function SimpleAIChatbot() {
   const userRole = session?.user?.role || 'student'
   const userDepartment = session?.user?.department || ''
   const userId = session?.user?.id || 'anonymous'
+
+  // Voice chat functionality
+  const {
+    isListening,
+    isSpeaking,
+    isSupported,
+    startListening,
+    stopListening,
+    toggleListening,
+    speak,
+    stopSpeaking
+  } = useVoiceChat({
+    onTranscript: (text) => {
+      setInputText(text)
+    },
+    onError: (error) => {
+      console.error('Voice chat error:', error)
+    }
+  })
 
   // Initial welcome message based on role
   useEffect(() => {
@@ -118,6 +142,34 @@ export default function SimpleAIChatbot() {
     }
   }
 
+  const handleSpeakMessage = (text: string, event?: React.MouseEvent) => {
+    // Prevent event bubbling
+    if (event) {
+      event.stopPropagation()
+      event.preventDefault()
+    }
+    
+    console.log('🎯 Simple AI - Speaker clicked')
+    console.log('Currently speaking:', isSpeaking)
+    
+    // If already speaking, stop it
+    if (isSpeaking) {
+      console.log('🛑 Stopping speech')
+      stopSpeaking()
+      return
+    }
+    
+    // Start speaking
+    const cleanText = text.trim()
+    if (!cleanText) {
+      console.warn('❌ No text to speak')
+      return
+    }
+    
+    console.log('🎤 Starting speech:', cleanText.substring(0, 50) + '...')
+    speak(cleanText)
+  }
+
   const formatTime = (timestamp: Date) => {
     return timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
@@ -195,13 +247,30 @@ export default function SimpleAIChatbot() {
                     )}
                     <div className="flex-1">
                       <p className="text-sm whitespace-pre-wrap">{message.text}</p>
-                      <p className={`text-xs mt-1 ${
+                      <div className={`flex justify-between items-center mt-1 ${
                         message.sender === 'user' 
                           ? 'text-blue-200' 
                           : 'text-gray-500 dark:text-gray-400'
                       }`}>
-                        {formatTime(message.timestamp)}
-                      </p>
+                        {message.sender === 'ai' && isSupported && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleSpeakMessage(message.text)}
+                            className={`h-6 px-2 text-xs transition-all duration-200 hover:scale-105 ${
+                              isSpeaking 
+                                ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50' 
+                                : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30'
+                            }`}
+                            title={isSpeaking ? 'Stop speaking' : 'Read aloud'}
+                          >
+                            {isSpeaking ? <VolumeX className="h-3 w-3" /> : <Volume2 className="h-3 w-3" />}
+                          </Button>
+                        )}
+                        <p className="text-xs">
+                          {formatTime(message.timestamp)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -228,19 +297,35 @@ export default function SimpleAIChatbot() {
 
         {/* Input Area */}
         <div className="flex space-x-2">
-          <Input
-            ref={inputRef}
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={
-              userRole === 'student' 
-                ? "Ask me about studies, assignments, or college life..." 
-                : "Ask me about teaching methods, curriculum, or educational strategies..."
-            }
-            disabled={isLoading}
-            className="flex-1"
-          />
+          <div className="flex-1 relative">
+            <Input
+              ref={inputRef}
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder={
+                userRole === 'student' 
+                  ? "Ask me about studies, assignments, or college life..." 
+                  : "Ask me about teaching methods, curriculum, or educational strategies..."
+              }
+              disabled={isLoading}
+              className="pr-12"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 rounded-lg transition-all duration-200 hover:scale-110 ${
+                isListening 
+                  ? 'text-red-500 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50' 
+                  : 'text-gray-400 hover:text-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/30'
+              }`}
+              onClick={toggleListening}
+              disabled={isLoading || !isSupported}
+              title={isListening ? 'Stop recording' : 'Start voice input'}
+            >
+              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+            </Button>
+          </div>
           <Button 
             onClick={handleSendMessage} 
             disabled={!inputText.trim() || isLoading}

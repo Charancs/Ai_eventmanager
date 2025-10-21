@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { MessageCircle, Send, Mic, MicOff, Building, Users, Info, MapPin, Calendar, BookOpen } from 'lucide-react'
+import { MessageCircle, Send, Mic, MicOff, Building, Users, Info, MapPin, Calendar, BookOpen, Volume2, VolumeX } from 'lucide-react'
 import { useSession } from 'next-auth/react'
+import { useVoiceChat } from '@/hooks/useVoiceChat'
 
 interface ChatMessage {
   id: string
@@ -51,8 +52,26 @@ export default function DepartmentEventChatbot({ className = '', defaultDepartme
   ])
   const [currentMessage, setCurrentMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [isListening, setIsListening] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Voice chat functionality
+  const {
+    isListening,
+    isSpeaking,
+    isSupported,
+    startListening,
+    stopListening,
+    toggleListening,
+    speak,
+    stopSpeaking
+  } = useVoiceChat({
+    onTranscript: (text) => {
+      setCurrentMessage(text)
+    },
+    onError: (error) => {
+      console.error('Voice chat error:', error)
+    }
+  })
 
   const departments = [
     { value: '', label: 'Select Department' },
@@ -143,38 +162,25 @@ export default function DepartmentEventChatbot({ className = '', defaultDepartme
     }
   }
 
-  const toggleVoiceInput = () => {
-    if (!isListening) {
-      // Start voice recognition
-      if ('webkitSpeechRecognition' in window) {
-        const recognition = new (window as any).webkitSpeechRecognition()
-        recognition.continuous = false
-        recognition.interimResults = false
-        recognition.lang = 'en-US'
-
-        recognition.onstart = () => {
-          setIsListening(true)
-        }
-
-        recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript
-          setCurrentMessage(transcript)
-          setIsListening(false)
-        }
-
-        recognition.onerror = () => {
-          setIsListening(false)
-        }
-
-        recognition.onend = () => {
-          setIsListening(false)
-        }
-
-        recognition.start()
-      }
-    } else {
-      setIsListening(false)
+  const handleSpeakMessage = (text: string, event?: React.MouseEvent) => {
+    console.log('🎯 HANDLE SPEAK MESSAGE called (Department)')
+    console.log('Text to speak:', text)
+    console.log('Current isSpeaking state:', isSpeaking)
+    
+    if (isSpeaking) {
+      console.log('🛑 Stopping current speech')
+      stopSpeaking()
+      return
     }
+    
+    const cleanText = text.trim()
+    if (!cleanText || cleanText.length === 0) {
+      console.warn('❌ No text to speak')
+      return
+    }
+    
+    console.log('🚀 Calling speak function directly')
+    speak(cleanText)
   }
 
   const formatTime = (timestamp: Date) => {
@@ -335,8 +341,23 @@ export default function DepartmentEventChatbot({ className = '', defaultDepartme
                       </div>
                     )}
                     
-                    {/* Enhanced Timestamp */}
-                    <div className="flex justify-end mt-3">
+                    {/* Enhanced Timestamp and Speaker Button */}
+                    <div className="flex justify-between items-center mt-3">
+                      {message.sender === 'ai' && isSupported && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSpeakMessage(message.text)}
+                          className={`h-8 px-2 rounded-lg transition-all duration-200 hover:scale-105 ${
+                            isSpeaking 
+                              ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50' 
+                              : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30'
+                          }`}
+                          title={isSpeaking ? 'Stop speaking' : 'Read aloud'}
+                        >
+                          {isSpeaking ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                        </Button>
+                      )}
                       <span className={`text-xs opacity-70 font-medium ${
                         message.sender === 'user' ? 'text-white/90' : 'text-gray-500 dark:text-gray-400'
                       }`}>
@@ -379,8 +400,12 @@ export default function DepartmentEventChatbot({ className = '', defaultDepartme
                   value={currentMessage}
                   onChange={(e) => setCurrentMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder={department ? `Ask about ${departments.find(d => d.value === department)?.label} department events...` : "Select a department first to start chatting..."}
-                  className="pr-14 md:pr-16 py-4 md:py-5 rounded-2xl border-2 border-gray-200 dark:border-slate-600 focus:border-blue-400 dark:focus:border-blue-400 bg-white/90 dark:bg-slate-800/90 text-base shadow-lg backdrop-blur-sm placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                  placeholder={isListening ? "🎤 Listening... speak now" : (department ? `Ask about ${departments.find(d => d.value === department)?.label} department events...` : "Select a department first to start chatting...")}
+                  className={`pr-14 md:pr-16 py-4 md:py-5 rounded-2xl border-2 ${
+                    isListening 
+                      ? 'border-red-400 dark:border-red-400 bg-red-50/50 dark:bg-red-900/20' 
+                      : 'border-gray-200 dark:border-slate-600 focus:border-blue-400 dark:focus:border-blue-400 bg-white/90 dark:bg-slate-800/90'
+                  } text-base shadow-lg backdrop-blur-sm placeholder:text-gray-500 dark:placeholder:text-gray-400 transition-all duration-200`}
                   disabled={isLoading || !department}
                 />
                 <Button
@@ -388,14 +413,29 @@ export default function DepartmentEventChatbot({ className = '', defaultDepartme
                   size="sm"
                   className={`absolute right-2 top-1/2 transform -translate-y-1/2 h-10 w-10 md:h-12 md:w-12 p-0 rounded-xl transition-all duration-200 hover:scale-110 ${
                     isListening 
-                      ? 'text-red-500 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 shadow-lg' 
+                      ? 'text-red-500 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 shadow-lg animate-pulse' 
                       : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 shadow-md'
                   }`}
-                  onClick={toggleVoiceInput}
-                  disabled={isLoading || !department}
-                  title={isListening ? 'Stop recording' : 'Start voice input'}
+                  onClick={toggleListening}
+                  disabled={isLoading || !department || !isSupported}
+                  title={
+                    !isSupported 
+                      ? 'Voice input not supported in this browser' 
+                      : !department
+                        ? 'Select a department first'
+                        : isListening 
+                          ? 'Stop recording (speak now)' 
+                          : 'Start voice input'
+                  }
                 >
-                  {isListening ? <MicOff className="h-5 w-5 md:h-6 md:w-6" /> : <Mic className="h-5 w-5 md:h-6 md:w-6" />}
+                  {isListening ? (
+                    <div className="relative">
+                      <MicOff className="h-5 w-5 md:h-6 md:w-6" />
+                      <div className="absolute -inset-1 rounded-full bg-red-400 opacity-20 animate-ping"></div>
+                    </div>
+                  ) : (
+                    <Mic className="h-5 w-5 md:h-6 md:w-6" />
+                  )}
                 </Button>
               </div>
               <Button
