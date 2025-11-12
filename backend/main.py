@@ -1353,6 +1353,32 @@ async def get_today_events_notifications():
         print(f"Error getting today's events notifications: {e}")
         raise HTTPException(status_code=500, detail=f"Error fetching today's notifications: {str(e)}")
 
+# Helper function to format chat responses
+def format_chat_response(response: str) -> str:
+    """Format the AI response for better readability in chat interface"""
+    # Replace numbered lists with bullet points and add proper spacing
+    lines = response.split('\n')
+    formatted_lines = []
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+            
+        # Convert numbered lists to bullet points
+        if line and line[0].isdigit() and '. ' in line:
+            # Extract the content after the number
+            content = line.split('. ', 1)[1] if '. ' in line else line
+            formatted_lines.append(f"• {content}")
+        # Handle sub-items with dashes
+        elif line.startswith('- '):
+            formatted_lines.append(f"  • {line[2:]}")
+        # Handle regular lines
+        else:
+            formatted_lines.append(line)
+    
+    return '\n'.join(formatted_lines)
+
 # College Information Chatbot for homepage
 class CollegeInfoChatQuery(BaseModel):
     query: str
@@ -1461,9 +1487,19 @@ async def college_info_chat(query_data: CollegeInfoChatQuery):
         Instructions:
         - Provide helpful, accurate information about MCE Hassan
         - Be friendly and conversational
+        - Format your responses clearly with proper line breaks and structure
+        - When listing information (like departments, faculty, programs), use bullet points or numbered lists
+        - Use line breaks to separate different sections of your response
+        - Keep responses concise but informative
         - If asked about something not in the context, politely say you don't have that specific information
         - Always refer to the college as "Malnad College of Engineering" or "MCE Hassan"
         - For contact information, provide the relevant department contacts when available
+        
+        Formatting Guidelines:
+        - Use bullet points (•) for lists
+        - Add line breaks between different topics
+        - Keep each line reasonably short for better readability
+        - Use clear section headers when appropriate
         """
         
         # Generate response using OpenAI
@@ -1479,9 +1515,12 @@ async def college_info_chat(query_data: CollegeInfoChatQuery):
         
         ai_response = response.choices[0].message.content
         
+        # Format the response for better readability
+        formatted_response = format_chat_response(ai_response)
+        
         return {
             "success": True,
-            "response": ai_response,
+            "response": formatted_response,
             "query": query_data.query,
             "timestamp": datetime.now().isoformat()
         }
