@@ -1353,6 +1353,147 @@ async def get_today_events_notifications():
         print(f"Error getting today's events notifications: {e}")
         raise HTTPException(status_code=500, detail=f"Error fetching today's notifications: {str(e)}")
 
+# College Information Chatbot for homepage
+class CollegeInfoChatQuery(BaseModel):
+    query: str
+    user_id: Optional[str] = "anonymous"
+    session_id: Optional[str] = None
+
+@app.post("/api/college-info/chat")
+async def college_info_chat(query_data: CollegeInfoChatQuery):
+    """College information chatbot for the homepage - answers questions about MCE Hassan"""
+    try:
+        from openai import OpenAI
+        
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        
+        # College context information
+        college_context = """
+        Malnad College of Engineering - Hassan 
+        
+        Malnad College of Engineering was established in the year 1960, during the second 5 year plan, as a joint venture of Government of India, Government of Karnataka and the Malnad Technical Education Society, Hassan.
+        
+        Leadership and Faculty:
+        - Principal (Chairman): Dr. H.J Amarendra serves as the Principal of MCE, Hassan.
+        - Director: Dr. Pradeep S is the Director of MCE, Hassan.
+        
+        Experts/Academicians from outside the college:
+        - Dr. H N Ramesh, Principal cum Director at The Oxford College of Engineering, Bengaluru
+        - Dr. H B Balakrishna, Principal at Global Academy of Technology, Bengaluru
+        - Mrs. Girija Kolagada, VP of Engineering at Progress Software (Chef Infra BU), Bengaluru
+        - Mr. Kiran N G, AI Consultant and Mentor from Bengaluru
+        
+        VTU Nominees:
+        - Dr. M S Ganesh Prasad, Academic Senate Member at VTU and Principal at Sai Vidya Institute of Technology, Bengaluru
+        - Dr. Naveen Prakash G V, Academic Senate Member at VTU, Chairperson of BOS in Mechanical Engineering at VTU, and HoD of Mechanical Engineering at VVCE, Mysuru
+        - Dr. T C Thanuja, Academic Senate Member at VTU and Professor of Electronics & Communication Engineering at VTU PG Centre, Muddenahalli
+        
+        Professor Emeritus: Dr. M T Venuraj serves as Professor Emeritus in Civil Engineering at MCE.
+        
+        Internal Members:
+        - Dr. H.J Amarendra as Dean (Planning & Development)
+        - Dr. Nanditha B.R. as Member Secretary & Dean (AA)
+        - Dr. A.A. Prasanna as Dean (Exams) and HoD of Physics
+        - Dr. Indira Bahaddur as Dean (SA)
+        - Dr. Madhu P as Dean (Research)
+        - Dr. Geetha Kiran A as Dean (CA) and CEO of ME-RIISE Foundation
+        - Dr. Raju S P as Associate Dean (P&D)
+        - Dr. Ramesh M as Associate Dean (AA)
+        - Dr. Murthy Mahadeva Naik.G as Associate Dean (Exams)
+        - Dr. Shivashankar B S as Associate Dean (SA)
+        - Dr. Yashas Gowda T.G as Associate Dean (Research)
+        - Dr. Mohana Lakshmi J as Associate Dean (CA)
+        
+        Heads of Departments:
+        - Dr. H S Narashiman for Civil Engineering
+        - Dr. Ezhil Vannan S for Mechanical Engineering
+        - Dr. S. Rajanna for E&E Engineering
+        - Dr. Padmaja Devi G for E&C Engineering
+        - Dr. J. Chandrika for CS & Engineering
+        - Dr. N E Ramesh for E&I Engineering
+        - Dr. Ananda Babu J for IS & Engineering
+        - Dr. Arjun B C for CS&E (AI&ML)
+        - Dr. Ramesh B for CS & BS
+        - Mrs. Margaret R E for MCA
+        - Dr. Kalavathi G.K. for First Year & Department of Mathematics
+        - Dr. Pradeep Kumar C B for Department of Chemistry
+        
+        Training & Placement Officer: Dr. Jeevan T P
+        
+        Programs Offered:
+        
+        UG Programs: The college offers nine undergraduate programs including Computer Science & Engineering, Computer Science & Engineering (Artificial Intelligence & Machine Learning), Computer Science and Business Systems, Robotics & Artificial Intelligence, Electronics & Communication Engineering, VLSI Design & Technology, Electrical & Electronics Engineering, Civil Engineering, and Mechanical Engineering.
+        
+        PG Programs: Five postgraduate programs are available: Digital Electronics & Communication Systems in the Electronics & Communication Engineering department, Computer Aided Design of Structures in Civil Engineering, Power & Energy System in Electrical & Electronics Engineering, Artificial Intelligence & Data Science in Information Science & Engineering, and MCA in Master of Computer Applications.
+        
+        Research Programs: The college offers Ph.D and M.Sc. Engineering by research programs.
+        
+        Student Enrollment and Placement Process:
+        Student enrollment for placement begins at the start of the fifth semester. A comprehensive database of enrolled students is maintained to facilitate hiring programs. Following enrollment, department-wise orientation sessions are conducted to highlight the significance of placements and related training. For the academic year 2024-25, till date 351 students have been successfully placed in reputed companies.
+        
+        Training and Skill Development Initiatives:
+        - An introductory session on career growth, planning, and available opportunities is conducted to the first year students.
+        - A mandatory credit course in Professional English is introduced in the first year, followed by training in communication and soft skills in subsequent years.
+        - A three-day "FEEL Employable" program is conducted in collaboration with CLHRD, Mangalore to enhance students' soft skills.
+        - A two-week intensive aptitude and soft skills training is organized after the sixth-semester exams, conducted by expert trainers. This program is also a mandatory credit course.
+        - A specialized crash course in C and C++ is provided to students from non-circuit branches to meet software industry requirements.
+        
+        Computer Science Department:
+        The Department of Computer Science & Engineering is headed by Dr. Chandrika.J and can be contacted at cse@mcehassan.ac.in. The department's vision is to become a prominent department of Computer Science & Engineering producing competent professionals with research and innovation skills, inculcating moral values and societal responsibility. The mission includes imparting world class engineering education to produce technically competent engineers, providing facilities and expertise in advanced computer technology to promote research, enhancing industry readiness and entrepreneurial abilities through innovative skills, and nurturing ethical values and social responsibilities.
+        
+        Department of Civil Engineering:
+        The Department of Civil Engineering is headed by Dr. H. S. Narashimhan and can be contacted at ce@mcehassan.ac.in. The department's vision is to be a Centre of Excellence in industry-oriented teaching, training, research, professional ethics, social responsibility, and continuing education for practicing engineers through sponsored research and consultancy services. The mission includes improvising the curriculum to include contents pertaining to the situational experience of a variety of sites and developing a sense of social responsibility and enhancing the research orientation of students through internship programs, enhancing sponsored research and consultancy works to achieve effective industry-institute-interaction and conducting a Continuing Education Programme for practicing engineers, and inculcating professional ethics through quality and modern construction practices.
+        
+        Clubs Available in MCE:
+        The college has various clubs including Eco Club, Leo Club, Literary Club, Rotaract Club, Devops Club, Spicmacay, Science Association, Technical Club, FOSS Club, and IUCEE EWB CHAPTER.
+        
+        Malnad College of Engineering Hassan Library:
+        The library staff includes Mr. D R Shankar as In-charge Librarian (contact: 9740595772), Smt. H. S Bharathi as F.D.A (contact: 7975895644), Mr. K.V Shivarak as F.D.A (contact: 7795735201), Mr. H. S Prathap as S.D.A (contact: 9986025588), and Mr. M.K Padmaraju as S.D.A (contact: 8453972117).
+        """
+        
+        # Create system prompt with college context
+        system_prompt = f"""
+        You are an AI assistant for Malnad College of Engineering (MCE), Hassan. You help visitors and students get information about the college.
+        
+        Use the following information to answer questions about the college:
+        {college_context}
+        
+        Instructions:
+        - Provide helpful, accurate information about MCE Hassan
+        - Be friendly and conversational
+        - If asked about something not in the context, politely say you don't have that specific information
+        - Always refer to the college as "Malnad College of Engineering" or "MCE Hassan"
+        - For contact information, provide the relevant department contacts when available
+        """
+        
+        # Generate response using OpenAI
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": query_data.query}
+            ],
+            temperature=0.7,
+            max_tokens=500
+        )
+        
+        ai_response = response.choices[0].message.content
+        
+        return {
+            "success": True,
+            "response": ai_response,
+            "query": query_data.query,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"College info chat error: {str(e)}")
+        return {
+            "success": False,
+            "response": "I'm sorry, I'm having trouble responding right now. Please try again later.",
+            "error": str(e)
+        }
+
 # Simple AI Chatbot endpoint for students and teachers
 class SimpleChatQuery(BaseModel):
     query: str
